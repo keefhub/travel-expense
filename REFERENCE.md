@@ -57,10 +57,12 @@ doc/              # agent-generated artifacts: doc/spec/ (specs), doc/plans/ (st
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored
 lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
+  storage.ts      # localStorage persistence layer (012) — trip/category accessors so far;
+                   # expense/exchangeRate accessors land in a later task
 ```
 
-`components/` and any route beyond `/` **do not exist yet**. `lib/types.ts` (the shared
-domain interfaces) is the only implemented piece so far.
+`components/` and any route beyond `/` **do not exist yet**. `lib/types.ts` and `lib/storage.ts`
+are the only implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
