@@ -87,3 +87,14 @@ export function renameCategory(oldName: string, newName: string): CategoryMutati
 
   return { ok: true };
 }
+
+export function deleteCategory(name: string): CategoryMutationResult {
+  if (isDefaultCategoryName(name)) return { ok: false, reason: "default" };
+
+  const current = getCategories();
+  if (!current.some((c) => c.name === name)) return { ok: false, reason: "not-found" };
+
+  const updated = current.filter((c) => c.name !== name);
+  const result = saveCategories(updated);
+  return result.ok ? { ok: true } : { ok: false, reason: "storage", error: result.error };
+}

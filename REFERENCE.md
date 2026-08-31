@@ -59,7 +59,7 @@ lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
   storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
-  categories.ts   # expense categories (010, in progress) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory (CategoryMutationResult) so far; delete lands in a later task
+  categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
 ```
 
 `components/` and any route beyond `/` **do not exist yet**. `lib/types.ts`, `lib/storage.ts`,
@@ -147,6 +147,25 @@ All getters return a safe fallback (`null` or `[]`) on SSR, a missing key, or co
 JSON. All setters catch write failures (quota exceeded, storage unavailable) and return
 `{ ok: false, error: "Your data could not be saved. Local storage may be full or unavailable." }`
 instead of throwing.
+
+`lib/categories.ts` public API (feature 010, complete) — the category-management layer built on
+`lib/storage.ts`'s `getCategories`/`saveCategories`/`getExpenses`/`saveExpenses`:
+
+- `CategoryMutationResult` — `{ ok: true } | { ok: false; reason: "invalid" | "duplicate" | "default" | "not-found" } | { ok: false; reason: "storage"; error: string }`
+- `DEFAULT_CATEGORIES: readonly Category[]` — frozen; `{ name, isDefault: true }` for Food, Transport,
+  Accommodation, Shopping, Activities, Others.
+- `getAllCategories(): Category[]` — fresh copies of the defaults followed by custom categories from
+  storage; safe to mutate the returned array/objects without affecting later calls.
+- `isDefaultCategoryName(name): boolean` — case-insensitive match against `DEFAULT_CATEGORIES`.
+- `addCategory(name): CategoryMutationResult` — trims; rejects empty (`"invalid"`) and case-insensitive
+  duplicates across defaults + custom (`"duplicate"`).
+- `renameCategory(oldName, newName): CategoryMutationResult` — rejects defaults (`"default"`), unknown
+  `oldName` (`"not-found"`), empty `newName` (`"invalid"`), and duplicates (`"duplicate"`). Writes the
+  expense cascade (renames matching expenses' `category`) **before** the category list, so a failure
+  between the two writes leaves `oldName` findable for a clean retry.
+- `deleteCategory(name): CategoryMutationResult` — rejects defaults (`"default"`) and unknown names
+  (`"not-found"`); removes only the category entry and deliberately never touches expenses — an
+  expense's `category` is a plain string, not a reference, so existing expenses keep the deleted name.
 
 ## 7. Workflow (short version)
 
