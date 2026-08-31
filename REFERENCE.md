@@ -60,10 +60,12 @@ lib/
   storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
+components/
+  BottomNav.tsx   # mobile-responsive nav (015, in progress) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; not yet wired into app/layout.tsx
 ```
 
-`components/` and any route beyond `/` **do not exist yet**. `lib/types.ts`, `lib/storage.ts`,
-`lib/countries.ts`, and `lib/categories.ts` are the only implemented pieces so far.
+Any route beyond `/` **does not exist yet**. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`,
+`lib/categories.ts`, and `components/BottomNav.tsx` are the only implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
