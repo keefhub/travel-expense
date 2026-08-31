@@ -59,10 +59,11 @@ lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
   storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
+  categories.ts   # expense categories (010, in progress) — DEFAULT_CATEGORIES (frozen) + getAllCategories/isDefaultCategoryName so far; add/rename/delete land in later tasks
 ```
 
 `components/` and any route beyond `/` **do not exist yet**. `lib/types.ts`, `lib/storage.ts`,
-and `lib/countries.ts` are the only implemented pieces so far.
+`lib/countries.ts`, and `lib/categories.ts` are the only implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
