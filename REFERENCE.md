@@ -55,10 +55,12 @@ features/         # the specs — OVERVIEW.md + 001..015 (source of truth)
 .claude/skills/   # feature-spec, spec-review, writing-plans, git-commit
 doc/              # agent-generated artifacts: doc/spec/ (specs), doc/plans/ (standalone plans)
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored
+lib/
+  types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
 ```
 
-`lib/`, `components/`, and any route beyond `/` **do not exist yet** — nothing but the scaffold has
-been implemented (`git log` has exactly one commit: `d9e2702 Initial commit from Create Next App`).
+`components/` and any route beyond `/` **do not exist yet**. `lib/types.ts` (the shared
+domain interfaces) is the only implemented piece so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
