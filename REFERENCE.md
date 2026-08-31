@@ -57,8 +57,7 @@ doc/              # agent-generated artifacts: doc/spec/ (specs), doc/plans/ (st
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored
 lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
-  storage.ts      # localStorage persistence layer (012) — trip/category accessors so far;
-                   # expense/exchangeRate accessors land in a later task
+  storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
 ```
 
 `components/` and any route beyond `/` **do not exist yet**. `lib/types.ts` and `lib/storage.ts`
@@ -131,9 +130,21 @@ Pulled from the specs so you do not have to open every file. The cited feature f
 - **Unsaved-input warning** (011): standard `beforeunload` browser warning on the record-expense page
   when the form is dirty; in-app navigation warns too; input is discarded on refresh.
 
-Storage keys, module names, and route paths are **not yet fixed** — feature 012 defines the storage
-layer and every later feature goes through it. Once 012 lands, record its keys and its public API
-here so nobody has to read the implementation to find them.
+`lib/storage.ts` public API (feature 012, complete):
+
+- `STORAGE_KEYS` — `{ trip: "travel-expense:trip", expenses: "travel-expense:expenses", categories: "travel-expense:categories", exchangeRates: "travel-expense:exchange-rates" }`
+- `SaveResult` — `{ ok: true } | { ok: false; error: string }`
+- `isStorageAvailable(): boolean` — probes `localStorage`; `false` during SSR or when storage is
+  unavailable/full.
+- `getTrip(): Trip | null` / `saveTrip(trip: Trip): SaveResult`
+- `getCategories(): Category[]` / `saveCategories(categories: Category[]): SaveResult`
+- `getExpenses(): Expense[]` / `saveExpenses(expenses: Expense[]): SaveResult`
+- `getExchangeRates(): ExchangeRate[]` / `saveExchangeRates(rates: ExchangeRate[]): SaveResult`
+
+All getters return a safe fallback (`null` or `[]`) on SSR, a missing key, or corrupt/unparseable
+JSON. All setters catch write failures (quota exceeded, storage unavailable) and return
+`{ ok: false, error: "Your data could not be saved. Local storage may be full or unavailable." }`
+instead of throwing.
 
 ## 7. Workflow (short version)
 

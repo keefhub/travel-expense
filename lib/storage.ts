@@ -1,4 +1,4 @@
-import type { Trip, Category } from "@/lib/types";
+import type { Trip, Category, Expense, ExchangeRate } from "@/lib/types";
 
 export const STORAGE_KEYS = {
   trip: "travel-expense:trip",
@@ -58,4 +58,20 @@ export function getCategories(): Category[] {
 
 export function saveCategories(categories: Category[]): SaveResult {
   return safeSetItem(STORAGE_KEYS.categories, categories);
+}
+
+export function getExpenses(): Expense[] {
+  return safeGetItem<Expense[]>(STORAGE_KEYS.expenses, []);
+}
+
+export function saveExpenses(expenses: Expense[]): SaveResult {
+  return safeSetItem(STORAGE_KEYS.expenses, expenses);
+}
+
+export function getExchangeRates(): ExchangeRate[] {
+  return safeGetItem<ExchangeRate[]>(STORAGE_KEYS.exchangeRates, []);
+}
+
+export function saveExchangeRates(rates: ExchangeRate[]): SaveResult {
+  return safeSetItem(STORAGE_KEYS.exchangeRates, rates);
 }
