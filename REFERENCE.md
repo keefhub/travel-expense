@@ -59,7 +59,7 @@ lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
   storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
-  categories.ts   # expense categories (010, in progress) — DEFAULT_CATEGORIES (frozen) + getAllCategories/isDefaultCategoryName so far; add/rename/delete land in later tasks
+  categories.ts   # expense categories (010, in progress) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory (CategoryMutationResult) so far; rename/delete land in later tasks
 ```
 
 `components/` and any route beyond `/` **do not exist yet**. `lib/types.ts`, `lib/storage.ts`,
