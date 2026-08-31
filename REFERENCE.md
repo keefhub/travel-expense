@@ -58,10 +58,11 @@ output/ .spec-review/   # agent scratch dirs; output/ is gitignored
 lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
   storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
+  countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
 ```
 
-`components/` and any route beyond `/` **do not exist yet**. `lib/types.ts` and `lib/storage.ts`
-are the only implemented pieces so far.
+`components/` and any route beyond `/` **do not exist yet**. `lib/types.ts`, `lib/storage.ts`,
+and `lib/countries.ts` are the only implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
