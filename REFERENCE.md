@@ -46,7 +46,7 @@ There is no separate `typecheck` script; `npm run build` is what catches type er
 
 ```
 app/
-  layout.tsx      # root layout: Geist + Geist_Mono via next/font/google, html.h-full, body.min-h-full flex flex-col
+  layout.tsx      # root layout: Geist + Geist_Mono via next/font/google, html.h-full, body.min-h-full flex flex-col; wraps children in a max-w-2xl pb-20 div and renders BottomNav after it (015)
   page.tsx        # still the create-next-app scaffold — replace when building setup (001) / dashboard (009)
   globals.css     # @import "tailwindcss"; :root color vars; @theme inline; prefers-color-scheme dark block
   favicon.ico
@@ -61,7 +61,7 @@ lib/
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
 components/
-  BottomNav.tsx   # mobile-responsive nav (015, in progress) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; not yet wired into app/layout.tsx
+  BottomNav.tsx   # mobile-responsive nav (015, in progress) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
 ```
 
 Any route beyond `/` **does not exist yet**. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`,
