@@ -50,6 +50,9 @@ app/
   page.tsx        # still the create-next-app scaffold — replace when building setup (001) / dashboard (009)
   globals.css     # @import "tailwindcss"; :root color vars; @theme inline; prefers-color-scheme dark block
   favicon.ico
+  expenses/new/page.tsx  # placeholder (015) — single <h1>Add Expense</h1>; replaced by feature 005 (record-expense)
+  categories/page.tsx    # placeholder (015) — single <h1>Categories</h1>; replaced by the (unassigned) category-management UI feature — see doc/spec/010.manage-expense-categories.md §7 Open Question 1
+  settings/page.tsx      # placeholder (015) — single <h1>Settings</h1>; replaced by feature 007 (exchange-rate management)
 public/           # scaffold SVGs only (next.svg, vercel.svg, file.svg, globe.svg, window.svg)
 features/         # the specs — OVERVIEW.md + 001..015 (source of truth)
 .claude/skills/   # feature-spec, spec-review, writing-plans, git-commit
@@ -61,11 +64,14 @@ lib/
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
 components/
-  BottomNav.tsx   # mobile-responsive nav (015, in progress) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
+  BottomNav.tsx   # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
 ```
 
-Any route beyond `/` **does not exist yet**. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`,
-`lib/categories.ts`, and `components/BottomNav.tsx` are the only implemented pieces so far.
+`/expenses/new`, `/categories`, and `/settings` are temporary placeholders (015) — each renders only
+a heading and exists so BottomNav's links resolve to real content instead of 404ing; each is replaced
+outright by the feature noted next to it in the file tree above. No other routes beyond `/` exist yet.
+`lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`, and `components/BottomNav.tsx`
+are the only other implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
