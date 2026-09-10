@@ -47,7 +47,7 @@ There is no separate `typecheck` script; `npm run build` is what catches type er
 ```
 app/
   layout.tsx      # root layout: Geist + Geist_Mono via next/font/google, html.h-full, body.min-h-full flex flex-col; wraps children in a max-w-2xl pb-20 div and renders BottomNav after it (015)
-  page.tsx        # still the create-next-app scaffold — replace when building setup (001) / dashboard (009)
+  page.tsx        # setup/dashboard decision (001, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState) reads lib/storage's getTrip() without a hydration mismatch: renders null until determined, TripSetupForm when no trip is saved, else a placeholder trip summary; placeholder replaced by feature 009 (home dashboard)
   globals.css     # @import "tailwindcss"; :root color vars; @theme inline; prefers-color-scheme dark block
   favicon.ico
   expenses/new/page.tsx  # placeholder (015) — single <h1>Add Expense</h1>; replaced by feature 005 (record-expense)
@@ -63,10 +63,10 @@ lib/
   storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
-  trip.ts         # trip setup domain logic (001, in progress) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult); pure, dependency-injected, no components wire it up yet
+  trip.ts         # trip setup domain logic (001, complete) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult); pure, dependency-injected, wired up by components/TripSetupForm.tsx and app/page.tsx
 components/
   BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
-  TripSetupForm.tsx # trip setup form UI (001, in progress) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls submitTripSetup and reports via onSaved(trip); not yet rendered by any page
+  TripSetupForm.tsx # trip setup form UI (001, complete) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls submitTripSetup and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved
 ```
 
 `/expenses/new`, `/categories`, and `/settings` are temporary placeholders (015) — each renders only
