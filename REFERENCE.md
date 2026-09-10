@@ -50,7 +50,7 @@ app/
   page.tsx        # setup/dashboard decision (001, complete; edit link 002, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState) reads lib/storage's getTrip() without a hydration mismatch: renders null until determined, TripSetupForm when no trip is saved, else a placeholder trip summary with an "Edit trip" link to /trip/edit; placeholder replaced by feature 009 (home dashboard)
   globals.css     # @import "tailwindcss"; :root color vars; @theme inline; prefers-color-scheme dark block
   favicon.ico
-  expenses/new/page.tsx  # placeholder (015) — single <h1>Add Expense</h1>; replaced by feature 005 (record-expense)
+  expenses/new/page.tsx  # record-expense route (005, in progress) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState), mirroring app/trip/edit/page.tsx's hydration-safe pattern: renders null until determined, redirects to "/" via router.replace in a useEffect when no trip is saved, else mounts components/ExpenseForm.tsx
   categories/page.tsx    # placeholder (015) — single <h1>Categories</h1>; replaced by the (unassigned) category-management UI feature — see doc/spec/010.manage-expense-categories.md §7 Open Question 1
   settings/page.tsx      # placeholder (015) — single <h1>Settings</h1>; replaced by feature 007 (exchange-rate management)
   trip/edit/page.tsx     # trip edit route (002, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState), mirroring app/page.tsx's hydration-safe pattern: renders null until determined, redirects to "/" via router.replace in a useEffect when no trip is saved, else mounts components/TripEditForm.tsx
