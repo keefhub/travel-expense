@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import type { Trip } from "@/lib/types";
 import { getTrip } from "@/lib/storage";
 import { calculateTripDurationDays } from "@/lib/trip";
@@ -69,6 +70,7 @@ export default function Home() {
         Trip to {trip.destinationCountry} ({trip.startDate} – {trip.endDate},{" "}
         {durationDays} {durationDays === 1 ? "day" : "days"})
       </p>
+      <Link href="/trip/edit">Edit trip</Link>
     </div>
   );
 }
