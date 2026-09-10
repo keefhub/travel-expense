@@ -1,4 +1,5 @@
-import type { Trip } from "@/lib/types";
+import type { Trip, Expense } from "@/lib/types";
+import type { SaveResult } from "@/lib/storage";
 import { getSupportedCurrencies } from "@/lib/countries";
 
 export interface ExpenseFormValues {
@@ -79,4 +80,44 @@ export function validateExpenseForm(
   }
 
   return { errors, warnings };
+}
+
+export type SubmitExpenseResult =
+  | { status: "invalid"; errors: ExpenseValidationResult["errors"] }
+  | { status: "saved"; expense: Expense }
+  | { status: "storage-error"; error: string };
+
+export function submitExpense(
+  values: ExpenseFormValues,
+  trip: { startDate: string; endDate: string },
+  categoryNames: string[],
+  deps: {
+    getExpenses: () => Expense[];
+    saveExpenses: (expenses: Expense[]) => SaveResult;
+    generateId: () => string;
+  }
+): SubmitExpenseResult {
+  const { errors } = validateExpenseForm(values, trip, categoryNames);
+  if (Object.keys(errors).length > 0) {
+    return { status: "invalid", errors };
+  }
+
+  const trimmedDescription = values.description.trim();
+  const expense: Expense = {
+    id: deps.generateId(),
+    amount: Number(values.amount.trim()),
+    currency: values.currency,
+    category: values.category,
+    date: values.date,
+    paymentMethod: values.paymentMethod,
+    location: values.location.trim(),
+    ...(trimmedDescription !== "" ? { description: trimmedDescription } : {}),
+  };
+
+  const result = deps.saveExpenses([...deps.getExpenses(), expense]);
+  if (!result.ok) {
+    return { status: "storage-error", error: result.error };
+  }
+
+  return { status: "saved", expense };
 }
