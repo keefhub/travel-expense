@@ -69,14 +69,15 @@ components/
   BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
   TripSetupForm.tsx # trip setup form UI (001, complete; 003 in progress — optional injectable submit prop) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls an injectable `submit` prop (defaults to submitTripSetup) and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved
   TripEditForm.tsx  # trip edit form UI (002, complete) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving; mounted at /trip/edit
+  NewTripConfirm.tsx # new-trip warning/confirm panel (003, in progress) — plain component (no 'use client' needed), takes onConfirm/onCancel props, renders a warning message plus a danger-styled confirm button and a cancel button; not yet wired into any route
 ```
 
 `/expenses/new`, `/categories`, and `/settings` are temporary placeholders (015) — each renders only
 a heading and exists so BottomNav's links resolve to real content instead of 404ing; each is replaced
 outright by the feature noted next to it in the file tree above. `/trip/edit` (002) is a real, complete
 route, not a placeholder. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`,
-`lib/trip.ts`, `components/BottomNav.tsx`, `components/TripSetupForm.tsx`, and `components/TripEditForm.tsx`
-are the only other implemented pieces so far.
+`lib/trip.ts`, `components/BottomNav.tsx`, `components/TripSetupForm.tsx`, `components/TripEditForm.tsx`,
+and `components/NewTripConfirm.tsx` are the only other implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
