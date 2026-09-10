@@ -48,6 +48,15 @@ export function validateTripForm(values: TripFormValues): TripValidationResult {
   return { errors };
 }
 
+export function getTripFormValues(trip: Trip): TripFormValues {
+  return {
+    destinationCountry: trip.destinationCountry,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    budget: trip.budget !== undefined ? String(trip.budget) : "",
+  };
+}
+
 export type SubmitTripResult =
   | { status: "invalid"; errors: TripValidationResult["errors"] }
   | { status: "saved"; trip: Trip }
