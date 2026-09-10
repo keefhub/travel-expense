@@ -1,4 +1,4 @@
-import type { Trip } from "@/lib/types";
+import type { Trip, Expense, ExchangeRate } from "@/lib/types";
 import type { SaveResult } from "@/lib/storage";
 import { isSupportedCountry } from "@/lib/countries";
 
@@ -62,18 +62,13 @@ export type SubmitTripResult =
   | { status: "saved"; trip: Trip }
   | { status: "storage-error"; error: string };
 
-export function submitTripSetup(
+function buildAndSaveTrip(
   values: TripFormValues,
   deps: {
     getCurrencyForCountry: (country: string) => string | null;
     saveTrip: (trip: Trip) => SaveResult;
   }
 ): SubmitTripResult {
-  const { errors } = validateTripForm(values);
-  if (Object.keys(errors).length > 0) {
-    return { status: "invalid", errors };
-  }
-
   const currency = deps.getCurrencyForCountry(values.destinationCountry);
   const trimmedBudget = values.budget.trim();
 
@@ -91,4 +86,45 @@ export function submitTripSetup(
   }
 
   return { status: "saved", trip };
+}
+
+export function submitTripSetup(
+  values: TripFormValues,
+  deps: {
+    getCurrencyForCountry: (country: string) => string | null;
+    saveTrip: (trip: Trip) => SaveResult;
+  }
+): SubmitTripResult {
+  const { errors } = validateTripForm(values);
+  if (Object.keys(errors).length > 0) {
+    return { status: "invalid", errors };
+  }
+  return buildAndSaveTrip(values, deps);
+}
+
+export function submitNewTrip(
+  values: TripFormValues,
+  deps: {
+    getCurrencyForCountry: (country: string) => string | null;
+    saveTrip: (trip: Trip) => SaveResult;
+    saveExpenses: (expenses: Expense[]) => SaveResult;
+    saveExchangeRates: (rates: ExchangeRate[]) => SaveResult;
+  }
+): SubmitTripResult {
+  const { errors } = validateTripForm(values);
+  if (Object.keys(errors).length > 0) {
+    return { status: "invalid", errors };
+  }
+
+  const clearedExpenses = deps.saveExpenses([]);
+  if (!clearedExpenses.ok) {
+    return { status: "storage-error", error: clearedExpenses.error };
+  }
+
+  const clearedRates = deps.saveExchangeRates([]);
+  if (!clearedRates.ok) {
+    return { status: "storage-error", error: clearedRates.error };
+  }
+
+  return buildAndSaveTrip(values, deps);
 }
