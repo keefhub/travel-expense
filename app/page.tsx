@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Trip } from "@/lib/types";
 import { getTrip } from "@/lib/storage";
 import { calculateTripDurationDays } from "@/lib/trip";
+import { EXPENSE_SAVED_FLAG_KEY } from "@/lib/expenses";
 import TripSetupForm from "@/components/TripSetupForm";
 
 // `undefined` = not yet determined (server render, and the client's first
@@ -48,9 +49,50 @@ function createTripStore() {
   };
 }
 
+// Reads the one-time post-save flag and clears it on the same call, so a
+// later reload of "/" never re-shows the message. Modeled as a
+// useSyncExternalStore snapshot (not useEffect+setState) for the same reason
+// createTripStore is: setting state from inside an effect body is a
+// synchronous cascading re-render the react-hooks/set-state-in-effect rule
+// rejects, and this needs the read to happen exactly once regardless of how
+// many times React calls getSnapshot for comparison.
+function createSavedMessageStore() {
+  let cached = false;
+  let hasRead = false;
+
+  return {
+    subscribe(): () => void {
+      return () => {};
+    },
+    getSnapshot(): boolean {
+      if (!hasRead) {
+        try {
+          cached = window.sessionStorage.getItem(EXPENSE_SAVED_FLAG_KEY) !== null;
+          if (cached) {
+            window.sessionStorage.removeItem(EXPENSE_SAVED_FLAG_KEY);
+          }
+        } catch {
+          cached = false;
+        }
+        hasRead = true;
+      }
+      return cached;
+    },
+    getServerSnapshot(): boolean {
+      return false;
+    },
+  };
+}
+
 export default function Home() {
   const [store] = useState(createTripStore);
   const trip = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
+  const [savedMessageStore] = useState(createSavedMessageStore);
+  const showSavedMessage = useSyncExternalStore(
+    savedMessageStore.subscribe,
+    savedMessageStore.getSnapshot,
+    savedMessageStore.getServerSnapshot
+  );
 
   if (trip === undefined) {
     return null;
@@ -65,6 +107,7 @@ export default function Home() {
   // Placeholder — replaced by feature 009 (home dashboard).
   return (
     <div className="p-4">
+      {showSavedMessage && <p role="status">Expense saved.</p>}
       <h1 className="text-xl font-semibold">Home</h1>
       <p>
         Trip to {trip.destinationCountry} ({trip.startDate} – {trip.endDate},{" "}
