@@ -53,6 +53,7 @@ app/
   expenses/new/page.tsx  # placeholder (015) — single <h1>Add Expense</h1>; replaced by feature 005 (record-expense)
   categories/page.tsx    # placeholder (015) — single <h1>Categories</h1>; replaced by the (unassigned) category-management UI feature — see doc/spec/010.manage-expense-categories.md §7 Open Question 1
   settings/page.tsx      # placeholder (015) — single <h1>Settings</h1>; replaced by feature 007 (exchange-rate management)
+  trip/edit/page.tsx     # trip edit route (002, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState), mirroring app/page.tsx's hydration-safe pattern: renders null until determined, redirects to "/" via router.replace in a useEffect when no trip is saved, else mounts components/TripEditForm.tsx
 public/           # scaffold SVGs only (next.svg, vercel.svg, file.svg, globe.svg, window.svg)
 features/         # the specs — OVERVIEW.md + 001..015 (source of truth)
 .claude/skills/   # feature-spec, spec-review, writing-plans, git-commit
@@ -67,15 +68,15 @@ lib/
 components/
   BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
   TripSetupForm.tsx # trip setup form UI (001, complete) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls submitTripSetup and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved
-  TripEditForm.tsx  # trip edit form UI (002, in progress) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving; not yet mounted in any route (lands with the 002 route task)
+  TripEditForm.tsx  # trip edit form UI (002, complete) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving; mounted at /trip/edit
 ```
 
 `/expenses/new`, `/categories`, and `/settings` are temporary placeholders (015) — each renders only
 a heading and exists so BottomNav's links resolve to real content instead of 404ing; each is replaced
-outright by the feature noted next to it in the file tree above. No other routes beyond `/` exist yet.
-`lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`, `lib/trip.ts`,
-`components/BottomNav.tsx`, `components/TripSetupForm.tsx`, and `components/TripEditForm.tsx` are the only other implemented pieces
-so far.
+outright by the feature noted next to it in the file tree above. `/trip/edit` (002) is a real, complete
+route, not a placeholder. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`,
+`lib/trip.ts`, `components/BottomNav.tsx`, `components/TripSetupForm.tsx`, and `components/TripEditForm.tsx`
+are the only other implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
