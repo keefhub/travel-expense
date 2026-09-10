@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { Trip } from "@/lib/types";
 import { SUPPORTED_COUNTRIES, getCurrencyForCountry } from "@/lib/countries";
 import { saveTrip } from "@/lib/storage";
@@ -106,6 +107,7 @@ export default function TripEditForm({ trip }: { trip: Trip }) {
       {saveError && <p role="alert">{saveError}</p>}
 
       <button type="submit">Save changes</button>
+      <Link href="/trip/new">Start a new trip</Link>
     </form>
   );
 }

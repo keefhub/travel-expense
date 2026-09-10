@@ -69,7 +69,7 @@ lib/
 components/
   BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
   TripSetupForm.tsx # trip setup form UI (001, complete; 003, complete — optional injectable submit prop) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls an injectable `submit` prop (defaults to submitTripSetup) and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved, and by app/trip/new/page.tsx (with a submitNewTrip-adapting submit prop) after the new-trip confirmation
-  TripEditForm.tsx  # trip edit form UI (002, complete) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving; mounted at /trip/edit
+  TripEditForm.tsx  # trip edit form UI (002, complete; 003, complete — "Start a new trip" link) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving, and renders a plain "Start a new trip" next/link to /trip/new as a secondary action after the submit button; mounted at /trip/edit
   NewTripConfirm.tsx # new-trip warning/confirm panel (003, complete) — plain component (no 'use client' needed), takes onConfirm/onCancel props, renders a warning message plus a danger-styled confirm button and a cancel button; mounted at /trip/new, shown before TripSetupForm until the traveller confirms
 ```
 
