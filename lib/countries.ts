@@ -66,3 +66,7 @@ export function searchSupportedCountries(query: string): readonly Country[] {
   if (trimmed === "") return SUPPORTED_COUNTRIES;
   return SUPPORTED_COUNTRIES.filter((c) => c.name.toLowerCase().includes(trimmed));
 }
+
+export function getSupportedCurrencies(): string[] {
+  return Array.from(new Set(SUPPORTED_COUNTRIES.map((c) => c.currency))).sort();
+}
