@@ -65,14 +65,16 @@ lib/
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
   trip.ts         # trip setup domain logic (001, in progress) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult); pure, dependency-injected, no components wire it up yet
 components/
-  BottomNav.tsx   # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
+  BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
+  TripSetupForm.tsx # trip setup form UI (001, in progress) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls submitTripSetup and reports via onSaved(trip); not yet rendered by any page
 ```
 
 `/expenses/new`, `/categories`, and `/settings` are temporary placeholders (015) — each renders only
 a heading and exists so BottomNav's links resolve to real content instead of 404ing; each is replaced
 outright by the feature noted next to it in the file tree above. No other routes beyond `/` exist yet.
-`lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`, `lib/trip.ts`, and
-`components/BottomNav.tsx` are the only other implemented pieces so far.
+`lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`, `lib/trip.ts`,
+`components/BottomNav.tsx`, and `components/TripSetupForm.tsx` are the only other implemented pieces
+so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
