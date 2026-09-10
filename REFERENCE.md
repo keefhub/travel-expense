@@ -54,6 +54,7 @@ app/
   categories/page.tsx    # placeholder (015) — single <h1>Categories</h1>; replaced by the (unassigned) category-management UI feature — see doc/spec/010.manage-expense-categories.md §7 Open Question 1
   settings/page.tsx      # placeholder (015) — single <h1>Settings</h1>; replaced by feature 007 (exchange-rate management)
   trip/edit/page.tsx     # trip edit route (002, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState), mirroring app/page.tsx's hydration-safe pattern: renders null until determined, redirects to "/" via router.replace in a useEffect when no trip is saved, else mounts components/TripEditForm.tsx
+  trip/new/page.tsx      # new-trip route (003, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState), mirroring app/trip/edit/page.tsx's hydration-safe pattern: renders null until determined, redirects to "/" via router.replace in a useEffect when no trip is saved, else shows components/NewTripConfirm.tsx first and only after onConfirm renders components/TripSetupForm.tsx wired to a submit closure that adapts lib/trip.ts's submitNewTrip (adding saveExpenses/saveExchangeRates to the deps TripSetupForm already supplies) to TripSetupForm's submit prop signature; both onSaved and onCancel use router.push (not router.replace) to "/" and "/trip/edit" respectively
 public/           # scaffold SVGs only (next.svg, vercel.svg, file.svg, globe.svg, window.svg)
 features/         # the specs — OVERVIEW.md + 001..015 (source of truth)
 .claude/skills/   # feature-spec, spec-review, writing-plans, git-commit
@@ -67,15 +68,15 @@ lib/
   trip.ts         # trip setup domain logic (001, complete) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult), getTripFormValues (002, complete — converts a stored Trip back into TripFormValues for pre-filling the edit form); submitNewTrip (003 — validates, clears saved expenses and exchange rates, then builds and saves a new trip via the same buildAndSaveTrip internals as submitTripSetup); pure, dependency-injected, wired up by components/TripSetupForm.tsx and app/page.tsx
 components/
   BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
-  TripSetupForm.tsx # trip setup form UI (001, complete; 003 in progress — optional injectable submit prop) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls an injectable `submit` prop (defaults to submitTripSetup) and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved
+  TripSetupForm.tsx # trip setup form UI (001, complete; 003, complete — optional injectable submit prop) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls an injectable `submit` prop (defaults to submitTripSetup) and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved, and by app/trip/new/page.tsx (with a submitNewTrip-adapting submit prop) after the new-trip confirmation
   TripEditForm.tsx  # trip edit form UI (002, complete) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving; mounted at /trip/edit
-  NewTripConfirm.tsx # new-trip warning/confirm panel (003, in progress) — plain component (no 'use client' needed), takes onConfirm/onCancel props, renders a warning message plus a danger-styled confirm button and a cancel button; not yet wired into any route
+  NewTripConfirm.tsx # new-trip warning/confirm panel (003, complete) — plain component (no 'use client' needed), takes onConfirm/onCancel props, renders a warning message plus a danger-styled confirm button and a cancel button; mounted at /trip/new, shown before TripSetupForm until the traveller confirms
 ```
 
 `/expenses/new`, `/categories`, and `/settings` are temporary placeholders (015) — each renders only
 a heading and exists so BottomNav's links resolve to real content instead of 404ing; each is replaced
-outright by the feature noted next to it in the file tree above. `/trip/edit` (002) is a real, complete
-route, not a placeholder. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`,
+outright by the feature noted next to it in the file tree above. `/trip/edit` (002) and `/trip/new`
+(003) are real, complete routes, not placeholders. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`,
 `lib/trip.ts`, `components/BottomNav.tsx`, `components/TripSetupForm.tsx`, `components/TripEditForm.tsx`,
 and `components/NewTripConfirm.tsx` are the only other implemented pieces so far.
 
