@@ -67,6 +67,7 @@ lib/
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
   trip.ts         # trip setup domain logic (001, complete) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult), getTripFormValues (002, complete — converts a stored Trip back into TripFormValues for pre-filling the edit form); submitNewTrip (003 — validates, clears saved expenses and exchange rates, then builds and saves a new trip via the same buildAndSaveTrip internals as submitTripSetup); pure, dependency-injected, wired up by components/TripSetupForm.tsx and app/page.tsx
   expenses.ts     # record-expense domain logic (005, in progress) — ExpenseFormValues, PAYMENT_METHODS, EXPENSE_SAVED_FLAG_KEY, getInitialExpenseFormValues(trip, today) (defaults currency to the trip's currency and date to today); mirrors lib/trip.ts's shape, not yet wired to any route
+  currency.ts     # multi-currency domain logic (006, in progress) — CurrencyTotal, getExpenseTotalsByCurrency(expenses) (sums Expense.amount grouped by Expense.currency into a Map, then returns entries sorted alphabetically by currency code); setExchangeRate/getConvertedTotals not yet added; not yet wired to any route
 components/
   BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
   TripSetupForm.tsx # trip setup form UI (001, complete; 003, complete — optional injectable submit prop) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls an injectable `submit` prop (defaults to submitTripSetup) and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved, and by app/trip/new/page.tsx (with a submitNewTrip-adapting submit prop) after the new-trip confirmation
@@ -79,7 +80,7 @@ components/
 a heading and exists so BottomNav's links resolve to real content instead of 404ing; each is replaced
 outright by the feature noted next to it in the file tree above. `/trip/edit` (002) and `/trip/new`
 (003) are real, complete routes, not placeholders. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`,
-`lib/trip.ts`, `lib/expenses.ts`, `components/BottomNav.tsx`, `components/TripSetupForm.tsx`, `components/TripEditForm.tsx`,
+`lib/trip.ts`, `lib/expenses.ts`, `lib/currency.ts`, `components/BottomNav.tsx`, `components/TripSetupForm.tsx`, `components/TripEditForm.tsx`,
 and `components/NewTripConfirm.tsx` are the only other implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
