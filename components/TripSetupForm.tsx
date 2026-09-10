@@ -3,10 +3,27 @@
 import { useState, type FormEvent } from "react";
 import type { Trip } from "@/lib/types";
 import { SUPPORTED_COUNTRIES, getCurrencyForCountry } from "@/lib/countries";
-import { saveTrip } from "@/lib/storage";
-import { submitTripSetup, type TripFormValues, type TripValidationResult } from "@/lib/trip";
+import { saveTrip, type SaveResult } from "@/lib/storage";
+import {
+  submitTripSetup,
+  type TripFormValues,
+  type TripValidationResult,
+  type SubmitTripResult,
+} from "@/lib/trip";
 
-export default function TripSetupForm({ onSaved }: { onSaved: (trip: Trip) => void }) {
+export default function TripSetupForm({
+  onSaved,
+  submit = submitTripSetup,
+}: {
+  onSaved: (trip: Trip) => void;
+  submit?: (
+    values: TripFormValues,
+    deps: {
+      getCurrencyForCountry: (country: string) => string | null;
+      saveTrip: (trip: Trip) => SaveResult;
+    }
+  ) => SubmitTripResult;
+}) {
   const [values, setValues] = useState<TripFormValues>({
     destinationCountry: "",
     startDate: "",
@@ -18,7 +35,7 @@ export default function TripSetupForm({ onSaved }: { onSaved: (trip: Trip) => vo
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const result = submitTripSetup(values, { getCurrencyForCountry, saveTrip });
+    const result = submit(values, { getCurrencyForCountry, saveTrip });
     if (result.status === "invalid") {
       setErrors(result.errors);
       setSaveError(null);

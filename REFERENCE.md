@@ -67,7 +67,7 @@ lib/
   trip.ts         # trip setup domain logic (001, complete) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult), getTripFormValues (002, complete — converts a stored Trip back into TripFormValues for pre-filling the edit form); submitNewTrip (003 — validates, clears saved expenses and exchange rates, then builds and saves a new trip via the same buildAndSaveTrip internals as submitTripSetup); pure, dependency-injected, wired up by components/TripSetupForm.tsx and app/page.tsx
 components/
   BottomNav.tsx     # mobile-responsive nav (015, complete) — plain Server Component (no 'use client'), four next/link items via exported NAV_ITEMS; wired into app/layout.tsx
-  TripSetupForm.tsx # trip setup form UI (001, complete) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls submitTripSetup and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved
+  TripSetupForm.tsx # trip setup form UI (001, complete; 003 in progress — optional injectable submit prop) — 'use client'; form state over TripFormValues, native <select> of SUPPORTED_COUNTRIES, calls an injectable `submit` prop (defaults to submitTripSetup) and reports via onSaved(trip); rendered by app/page.tsx when no trip is saved
   TripEditForm.tsx  # trip edit form UI (002, complete) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving; mounted at /trip/edit
 ```
 
