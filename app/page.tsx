@@ -6,7 +6,11 @@ import type { Trip } from "@/lib/types";
 import { getExpenses, getExchangeRates, getTrip } from "@/lib/storage";
 import { calculateTripDurationDays } from "@/lib/trip";
 import { EXPENSE_SAVED_FLAG_KEY } from "@/lib/expenses";
-import { getExpenseTotalsByCurrency, getConvertedTotals } from "@/lib/currency";
+import {
+  getExpenseTotalsByCurrency,
+  getConvertedTotals,
+  getRemainingBudget,
+} from "@/lib/currency";
 import TripSetupForm from "@/components/TripSetupForm";
 
 // `undefined` = not yet determined (server render, and the client's first
@@ -68,7 +72,8 @@ function createSavedMessageStore() {
     getSnapshot(): boolean {
       if (!hasRead) {
         try {
-          cached = window.sessionStorage.getItem(EXPENSE_SAVED_FLAG_KEY) !== null;
+          cached =
+            window.sessionStorage.getItem(EXPENSE_SAVED_FLAG_KEY) !== null;
           if (cached) {
             window.sessionStorage.removeItem(EXPENSE_SAVED_FLAG_KEY);
           }
@@ -87,12 +92,16 @@ function createSavedMessageStore() {
 
 export default function Home() {
   const [store] = useState(createTripStore);
-  const trip = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
+  const trip = useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+    store.getServerSnapshot,
+  );
   const [savedMessageStore] = useState(createSavedMessageStore);
   const showSavedMessage = useSyncExternalStore(
     savedMessageStore.subscribe,
     savedMessageStore.getSnapshot,
-    savedMessageStore.getServerSnapshot
+    savedMessageStore.getServerSnapshot,
   );
 
   if (trip === undefined) {
@@ -108,7 +117,13 @@ export default function Home() {
   // Currency totals below — minimal surface for feature 006, will be folded
   // into feature 009's full dashboard layout.
   const currencyTotals = getExpenseTotalsByCurrency(getExpenses());
-  const convertedTotals = getConvertedTotals(currencyTotals, trip.currency, getExchangeRates());
+  const convertedTotals = getConvertedTotals(
+    currencyTotals,
+    trip.currency,
+    getExchangeRates(),
+  );
+  const remainingBudget =
+    trip.budget !== undefined ? getRemainingBudget(trip.budget, convertedTotals) : null;
 
   // Placeholder — replaced by feature 009 (home dashboard).
   return (
@@ -116,10 +131,25 @@ export default function Home() {
       {showSavedMessage && <p role="status">Expense saved.</p>}
       <h1 className="text-xl font-semibold">Home</h1>
       <p>
-        Trip to {trip.destinationCountry} ({trip.startDate} – {trip.endDate},{" "}
+        Trip to {trip.destinationCountry} ({trip.startDate} to {trip.endDate},{" "}
         {durationDays} {durationDays === 1 ? "day" : "days"})
       </p>
       <Link href="/trip/edit">Edit trip</Link>
+      {trip.budget !== undefined && (
+        <div className="flex flex-col gap-1 pt-4">
+          <h2 className="text-xl font-semibold">Budget</h2>
+          <p className="font-mono">
+            Budget: {trip.currency} {trip.budget.toFixed(2)}
+          </p>
+          {remainingBudget !== null ? (
+            <p className={`font-mono ${remainingBudget < 0 ? "text-(--danger)" : ""}`}>
+              Remaining: {trip.currency} {remainingBudget.toFixed(2)}
+            </p>
+          ) : (
+            <p role="status">Remaining budget cannot be fully calculated yet.</p>
+          )}
+        </div>
+      )}
       {currencyTotals.length > 0 && (
         <div className="flex flex-col gap-1 pt-4">
           <h2 className="text-xl font-semibold">Spending by currency</h2>
