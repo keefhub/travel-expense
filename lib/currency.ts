@@ -45,3 +45,35 @@ export function setExchangeRate(
   const withoutCurrency = rates.filter((r) => r.currency !== currency);
   return [...withoutCurrency, { currency, rate }];
 }
+
+export interface ConvertedTotalsResult {
+  convertedTotal: number;
+  isComplete: boolean;
+  missingCurrencies: string[];
+}
+
+export function getConvertedTotals(
+  totals: CurrencyTotal[],
+  tripCurrency: string,
+  rates: ExchangeRate[]
+): ConvertedTotalsResult {
+  let convertedTotal = 0;
+  const missingCurrencies: string[] = [];
+
+  for (const total of totals) {
+    if (total.currency === tripCurrency) {
+      convertedTotal += total.amount;
+      continue;
+    }
+
+    const rate = rates.find((r) => r.currency === total.currency);
+    if (rate === undefined) {
+      missingCurrencies.push(total.currency);
+      continue;
+    }
+
+    convertedTotal += total.amount * rate.rate;
+  }
+
+  return { convertedTotal, isComplete: missingCurrencies.length === 0, missingCurrencies };
+}
