@@ -2,16 +2,24 @@
 
 import { useState, type FormEvent } from "react";
 import type { Trip } from "@/lib/types";
-import { getSupportedCurrencies } from "@/lib/countries";
-import { getExchangeRates, saveExchangeRates } from "@/lib/storage";
-import { validateExchangeRateInput, setExchangeRate } from "@/lib/currency";
+import { getExpenses, getExchangeRates, saveExchangeRates } from "@/lib/storage";
+import { validateExchangeRateInput, setExchangeRate, getCurrenciesNeedingRates } from "@/lib/currency";
 
 export default function ExchangeRateForm({ trip }: { trip: Trip }) {
-  const currencyOptions = getSupportedCurrencies().filter((c) => c !== trip.currency);
+  const currencyOptions = getCurrenciesNeedingRates(getExpenses(), trip.currency);
   const [currency, setCurrency] = useState(currencyOptions[0] ?? "");
   const [rateInput, setRateInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  if (currencyOptions.length === 0) {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <h2 className="text-xl font-semibold">Exchange rate</h2>
+        <p>No other currencies recorded yet.</p>
+      </div>
+    );
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
