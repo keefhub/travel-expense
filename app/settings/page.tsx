@@ -3,7 +3,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { Trip } from "@/lib/types";
-import { getTrip, resetAppData } from "@/lib/storage";
+import { getTrip, getExpenses, resetAppData } from "@/lib/storage";
+import { formatExpensesAsCsv } from "@/lib/export";
 import ExchangeRateForm from "@/components/ExchangeRateForm";
 import ResetAppDataConfirm from "@/components/ResetAppDataConfirm";
 
@@ -30,12 +31,26 @@ function createTripStore() {
   };
 }
 
+function downloadExpensesCsv(): void {
+  const csv = formatExpensesAsCsv(getExpenses());
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "expenses.csv";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [store] = useState(createTripStore);
   const trip = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (trip === null) {
@@ -74,6 +89,23 @@ export default function SettingsPage() {
       <h1 className="text-xl font-semibold p-4">Settings</h1>
       <p className="px-4 font-mono text-sm text-[var(--muted)]">Trip currency: {trip.currency}</p>
       <ExchangeRateForm trip={trip} />
+      <div className="p-4 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            const expenses = getExpenses();
+            if (expenses.length === 0) {
+              setExportMessage("You have no expenses to export.");
+              return;
+            }
+            setExportMessage(null);
+            downloadExpensesCsv();
+          }}
+        >
+          Export expenses
+        </button>
+        {exportMessage && <p role="status">{exportMessage}</p>}
+      </div>
       <div className="p-4">
         <button type="button" onClick={() => setConfirmingReset(true)}>
           Reset app data
