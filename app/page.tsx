@@ -3,9 +3,10 @@
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import type { Trip } from "@/lib/types";
-import { getTrip } from "@/lib/storage";
+import { getExpenses, getExchangeRates, getTrip } from "@/lib/storage";
 import { calculateTripDurationDays } from "@/lib/trip";
 import { EXPENSE_SAVED_FLAG_KEY } from "@/lib/expenses";
+import { getExpenseTotalsByCurrency, getConvertedTotals } from "@/lib/currency";
 import TripSetupForm from "@/components/TripSetupForm";
 
 // `undefined` = not yet determined (server render, and the client's first
@@ -104,6 +105,11 @@ export default function Home() {
 
   const durationDays = calculateTripDurationDays(trip.startDate, trip.endDate);
 
+  // Currency totals below — minimal surface for feature 006, will be folded
+  // into feature 009's full dashboard layout.
+  const currencyTotals = getExpenseTotalsByCurrency(getExpenses());
+  const convertedTotals = getConvertedTotals(currencyTotals, trip.currency, getExchangeRates());
+
   // Placeholder — replaced by feature 009 (home dashboard).
   return (
     <div className="p-4">
@@ -114,6 +120,27 @@ export default function Home() {
         {durationDays} {durationDays === 1 ? "day" : "days"})
       </p>
       <Link href="/trip/edit">Edit trip</Link>
+      {currencyTotals.length > 0 && (
+        <div className="flex flex-col gap-1 pt-4">
+          <h2 className="text-xl font-semibold">Spending by currency</h2>
+          <ul className="flex flex-col divide-y divide-(--border)">
+            {currencyTotals.map((total) => (
+              <li key={total.currency} className="font-mono py-1">
+                {total.currency} {total.amount.toFixed(2)}
+              </li>
+            ))}
+          </ul>
+          <p className="font-mono">
+            {trip.currency} {convertedTotals.convertedTotal.toFixed(2)}
+          </p>
+          {!convertedTotals.isComplete && (
+            <p role="status">
+              Converted total is incomplete. Missing a rate for{" "}
+              {convertedTotals.missingCurrencies.join(", ")}.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
