@@ -47,6 +47,7 @@ export default function SettingsPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold p-4">Settings</h1>
+      <p className="px-4 font-mono text-sm text-[var(--muted)]">Trip currency: {trip.currency}</p>
       <ExchangeRateForm trip={trip} />
     </div>
   );
