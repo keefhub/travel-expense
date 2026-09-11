@@ -121,3 +121,12 @@ export function submitExpense(
 
   return { status: "saved", expense };
 }
+
+export const RECENT_EXPENSE_LIMIT = 5;
+
+export function getRecentExpenses(
+  expenses: Expense[],
+  limit: number = RECENT_EXPENSE_LIMIT
+): Expense[] {
+  return [...expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit);
+}
