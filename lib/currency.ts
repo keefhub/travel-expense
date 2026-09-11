@@ -89,6 +89,51 @@ export function getRemainingBudget(
   return convertedTotals.isComplete ? budget - convertedTotals.convertedTotal : null;
 }
 
+export interface CategoryTotal {
+  category: string;
+  amount: number;
+}
+
+export interface CategoryTotalsResult {
+  categoryTotals: CategoryTotal[];
+  isComplete: boolean;
+  missingCurrencies: string[];
+}
+
+export function getCategoryTotals(
+  expenses: Expense[],
+  tripCurrency: string,
+  rates: ExchangeRate[]
+): CategoryTotalsResult {
+  const totals = new Map<string, number>();
+  const missingCurrencies = new Set<string>();
+
+  for (const expense of expenses) {
+    let convertedAmount: number;
+    if (expense.currency === tripCurrency) {
+      convertedAmount = expense.amount;
+    } else {
+      const rate = rates.find((r) => r.currency === expense.currency);
+      if (rate === undefined) {
+        missingCurrencies.add(expense.currency);
+        continue;
+      }
+      convertedAmount = expense.amount * rate.rate;
+    }
+    totals.set(expense.category, (totals.get(expense.category) ?? 0) + convertedAmount);
+  }
+
+  const categoryTotals = Array.from(totals.entries())
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount);
+
+  return {
+    categoryTotals,
+    isComplete: missingCurrencies.size === 0,
+    missingCurrencies: Array.from(missingCurrencies).sort(),
+  };
+}
+
 // Despite the name, this returns every non-trip currency in use, including ones that
 // already have a saved rate — the currency selector needs the full in-use set so an
 // existing rate can still be found and edited (BR-007-05/06), not just currencies that
