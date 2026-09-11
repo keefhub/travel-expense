@@ -81,3 +81,14 @@ export function getConvertedTotals(
 
   return { convertedTotal, isComplete: missingCurrencies.length === 0, missingCurrencies };
 }
+
+// Despite the name, this returns every non-trip currency in use, including ones that
+// already have a saved rate — the currency selector needs the full in-use set so an
+// existing rate can still be found and edited (BR-007-05/06), not just currencies that
+// are still missing one. Named for its primary purpose (surfacing what needs attention),
+// not as a promise to exclude already-rated currencies.
+export function getCurrenciesNeedingRates(expenses: Expense[], tripCurrency: string): string[] {
+  const currencies = new Set(expenses.map((e) => e.currency));
+  currencies.delete(tripCurrency);
+  return Array.from(currencies).sort();
+}
