@@ -16,6 +16,9 @@ import {
   type ExpenseFormValues,
   type ExpenseValidationResult,
 } from "@/lib/expenses";
+import AddCategoryModal from "@/components/AddCategoryModal";
+
+const ADD_NEW_CATEGORY = "__add_new_category__";
 
 export default function ExpenseForm({ trip }: { trip: Trip }) {
   const router = useRouter();
@@ -29,7 +32,8 @@ export default function ExpenseForm({ trip }: { trip: Trip }) {
   const [errors, setErrors] = useState<ExpenseValidationResult["errors"]>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [categories] = useState(() => getAllCategories());
+  const [categories, setCategories] = useState(() => getAllCategories());
+  const [showAddCategory, setShowAddCategory] = useState(false);
   const categoryNames = categories.map((c) => c.name);
   const dateWarning = validateExpenseForm(values, trip, categoryNames).warnings.date;
 
@@ -57,108 +61,128 @@ export default function ExpenseForm({ trip }: { trip: Trip }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">Record an expense</h1>
+    <>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
+        <h1 className="text-xl font-semibold">Record an expense</h1>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="amount">Amount</label>
-        <input
-          id="amount"
-          type="text"
-          inputMode="decimal"
-          value={values.amount}
-          onChange={(e) => setValues({ ...values, amount: e.target.value })}
+        <div className="flex flex-col gap-1">
+          <label htmlFor="amount">Amount</label>
+          <input
+            id="amount"
+            type="text"
+            inputMode="decimal"
+            value={values.amount}
+            onChange={(e) => setValues({ ...values, amount: e.target.value })}
+          />
+          {errors.amount && <p role="alert">{errors.amount}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="currency">Currency</label>
+          <select
+            id="currency"
+            value={values.currency}
+            onChange={(e) => setValues({ ...values, currency: e.target.value })}
+          >
+            <option value="">Select a currency</option>
+            {getSupportedCurrencies().map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
+          {errors.currency && <p role="alert">{errors.currency}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="category">Category</label>
+          <select
+            id="category"
+            value={values.category}
+            onChange={(e) => {
+              if (e.target.selectedIndex === 0) {
+                setShowAddCategory(true);
+                return;
+              }
+              setValues({ ...values, category: e.target.value });
+            }}
+          >
+            <option value={ADD_NEW_CATEGORY}>+ Add New</option>
+            <option value="">Select a category</option>
+            {categories.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {errors.category && <p role="alert">{errors.category}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="date">Date</label>
+          <input
+            id="date"
+            type="date"
+            value={values.date}
+            onChange={(e) => setValues({ ...values, date: e.target.value })}
+          />
+          {errors.date && <p role="alert">{errors.date}</p>}
+          {!errors.date && dateWarning && <p role="status">{dateWarning}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="paymentMethod">Payment method</label>
+          <select
+            id="paymentMethod"
+            value={values.paymentMethod}
+            onChange={(e) => setValues({ ...values, paymentMethod: e.target.value })}
+          >
+            <option value="">Select a payment method</option>
+            {PAYMENT_METHODS.map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
+          </select>
+          {errors.paymentMethod && <p role="alert">{errors.paymentMethod}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="location">Location</label>
+          <input
+            id="location"
+            type="text"
+            value={values.location}
+            onChange={(e) => setValues({ ...values, location: e.target.value })}
+          />
+          {errors.location && <p role="alert">{errors.location}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="description">Description (optional)</label>
+          <input
+            id="description"
+            type="text"
+            value={values.description}
+            onChange={(e) => setValues({ ...values, description: e.target.value })}
+          />
+        </div>
+
+        {saveError && <p role="alert">{saveError}</p>}
+
+        <button type="submit">Save expense</button>
+      </form>
+
+      {showAddCategory && (
+        <AddCategoryModal
+          onAdded={(name) => {
+            setCategories(getAllCategories());
+            setValues({ ...values, category: name });
+            setShowAddCategory(false);
+          }}
+          onCancel={() => setShowAddCategory(false)}
         />
-        {errors.amount && <p role="alert">{errors.amount}</p>}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="currency">Currency</label>
-        <select
-          id="currency"
-          value={values.currency}
-          onChange={(e) => setValues({ ...values, currency: e.target.value })}
-        >
-          <option value="">Select a currency</option>
-          {getSupportedCurrencies().map((currency) => (
-            <option key={currency} value={currency}>
-              {currency}
-            </option>
-          ))}
-        </select>
-        {errors.currency && <p role="alert">{errors.currency}</p>}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="category">Category</label>
-        <select
-          id="category"
-          value={values.category}
-          onChange={(e) => setValues({ ...values, category: e.target.value })}
-        >
-          <option value="">Select a category</option>
-          {categories.map((c) => (
-            <option key={c.name} value={c.name}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        {errors.category && <p role="alert">{errors.category}</p>}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="date">Date</label>
-        <input
-          id="date"
-          type="date"
-          value={values.date}
-          onChange={(e) => setValues({ ...values, date: e.target.value })}
-        />
-        {errors.date && <p role="alert">{errors.date}</p>}
-        {!errors.date && dateWarning && <p role="status">{dateWarning}</p>}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="paymentMethod">Payment method</label>
-        <select
-          id="paymentMethod"
-          value={values.paymentMethod}
-          onChange={(e) => setValues({ ...values, paymentMethod: e.target.value })}
-        >
-          <option value="">Select a payment method</option>
-          {PAYMENT_METHODS.map((method) => (
-            <option key={method} value={method}>
-              {method}
-            </option>
-          ))}
-        </select>
-        {errors.paymentMethod && <p role="alert">{errors.paymentMethod}</p>}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="location">Location</label>
-        <input
-          id="location"
-          type="text"
-          value={values.location}
-          onChange={(e) => setValues({ ...values, location: e.target.value })}
-        />
-        {errors.location && <p role="alert">{errors.location}</p>}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="description">Description (optional)</label>
-        <input
-          id="description"
-          type="text"
-          value={values.description}
-          onChange={(e) => setValues({ ...values, description: e.target.value })}
-        />
-      </div>
-
-      {saveError && <p role="alert">{saveError}</p>}
-
-      <button type="submit">Save expense</button>
-    </form>
+      )}
+    </>
   );
 }
