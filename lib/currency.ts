@@ -82,6 +82,13 @@ export function getConvertedTotals(
   return { convertedTotal, isComplete: missingCurrencies.length === 0, missingCurrencies };
 }
 
+export function getRemainingBudget(
+  budget: number,
+  convertedTotals: ConvertedTotalsResult
+): number | null {
+  return convertedTotals.isComplete ? budget - convertedTotals.convertedTotal : null;
+}
+
 // Despite the name, this returns every non-trip currency in use, including ones that
 // already have a saved rate — the currency selector needs the full in-use set so an
 // existing rate can still be found and edited (BR-007-05/06), not just currencies that
