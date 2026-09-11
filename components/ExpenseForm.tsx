@@ -6,6 +6,7 @@ import type { Trip } from "@/lib/types";
 import { getSupportedCurrencies } from "@/lib/countries";
 import { getAllCategories } from "@/lib/categories";
 import { getExpenses, saveExpenses } from "@/lib/storage";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 import {
   getInitialExpenseFormValues,
   validateExpenseForm,
@@ -22,6 +23,9 @@ export default function ExpenseForm({ trip }: { trip: Trip }) {
   const [values, setValues] = useState<ExpenseFormValues>(() =>
     getInitialExpenseFormValues(trip, today)
   );
+  const [initialValues] = useState(values);
+  const isDirty = JSON.stringify(values) !== JSON.stringify(initialValues);
+  useUnsavedChangesWarning(isDirty);
   const [errors, setErrors] = useState<ExpenseValidationResult["errors"]>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
