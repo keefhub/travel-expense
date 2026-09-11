@@ -20,6 +20,10 @@ export function validateExchangeRateInput(
   rateInput: string,
   tripCurrency: string
 ): { error?: string } {
+  if (currency === "") {
+    return { error: "Select a currency." };
+  }
+
   if (currency === tripCurrency) {
     return { error: "Exchange rate is not needed for the trip's own currency." };
   }

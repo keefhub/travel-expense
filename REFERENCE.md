@@ -74,6 +74,7 @@ components/
   TripEditForm.tsx  # trip edit form UI (002, complete; 003, complete — "Start a new trip" link) — 'use client'; pre-fills TripFormValues from a stored Trip via getTripFormValues, shows live-recalculated travel days and trip currency, calls the same submitTripSetup on submit and router.push("/") after saving, and renders a plain "Start a new trip" next/link to /trip/new as a secondary action after the submit button; mounted at /trip/edit
   NewTripConfirm.tsx # new-trip warning/confirm panel (003, complete) — plain component (no 'use client' needed), takes onConfirm/onCancel props, renders a warning message plus a danger-styled confirm button and a cancel button; mounted at /trip/new, shown before TripSetupForm until the traveller confirms
   ExpenseForm.tsx   # record-expense form UI (005, in progress) — 'use client'; renders all seven ExpenseFormValues fields (amount, currency, category, date, payment method, location, optional description), pre-filled via getInitialExpenseFormValues(trip, today), live-recomputes the trip-period date warning via validateExpenseForm on every render, calls submitExpense on submit and sets EXPENSE_SAVED_FLAG_KEY in sessionStorage before router.push("/"); mirrors TripEditForm.tsx's live-derived-fields pattern; not yet wired to a route
+  ExchangeRateForm.tsx # exchange-rate entry form UI (006, in progress) — 'use client'; currency <select> built from getSupportedCurrencies() filtered to exclude trip.currency, a decimal rate <input>, calls validateExchangeRateInput then setExchangeRate(getExchangeRates(), currency, rate) and saveExchangeRates on submit (fresh storage reads on every submit, not cached in state); a validation or SaveResult error renders role="alert" and preserves rateInput, a successful save clears rateInput but keeps currency selected and shows a role="status" "Exchange rate saved." confirmation; mirrors ExpenseForm.tsx's error-preserves-input pattern; not yet wired to a route
 ```
 
 `/expenses/new`, `/categories`, and `/settings` are temporary placeholders (015) — each renders only
@@ -81,7 +82,7 @@ a heading and exists so BottomNav's links resolve to real content instead of 404
 outright by the feature noted next to it in the file tree above. `/trip/edit` (002) and `/trip/new`
 (003) are real, complete routes, not placeholders. `lib/types.ts`, `lib/storage.ts`, `lib/countries.ts`, `lib/categories.ts`,
 `lib/trip.ts`, `lib/expenses.ts`, `lib/currency.ts`, `components/BottomNav.tsx`, `components/TripSetupForm.tsx`, `components/TripEditForm.tsx`,
-and `components/NewTripConfirm.tsx` are the only other implemented pieces so far.
+`components/NewTripConfirm.tsx`, and `components/ExchangeRateForm.tsx` are the only other implemented pieces so far.
 
 - Path alias: `@/*` → repo root ([tsconfig.json](tsconfig.json)), e.g. `@/lib/storage`.
 - Git default branch for PRs is `main`; work currently sits on `master`.
