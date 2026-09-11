@@ -75,3 +75,22 @@ export function getExchangeRates(): ExchangeRate[] {
 export function saveExchangeRates(rates: ExchangeRate[]): SaveResult {
   return safeSetItem(STORAGE_KEYS.exchangeRates, rates);
 }
+
+export function resetAppData(): SaveResult {
+  if (!isStorageAvailable()) return { ok: false, error: SAVE_ERROR_MESSAGE };
+  try {
+    // Auxiliary collections first, the trip record last — mirrors
+    // submitNewTrip's existing ordering rationale (lib/trip.ts): if a
+    // later removeItem in this sequence ever did throw, the trip record
+    // itself is the last thing removed, so a reported failure leaves the
+    // most-authoritative piece of data still intact rather than already
+    // gone.
+    window.localStorage.removeItem(STORAGE_KEYS.expenses);
+    window.localStorage.removeItem(STORAGE_KEYS.categories);
+    window.localStorage.removeItem(STORAGE_KEYS.exchangeRates);
+    window.localStorage.removeItem(STORAGE_KEYS.trip);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: SAVE_ERROR_MESSAGE };
+  }
+}

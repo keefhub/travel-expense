@@ -63,7 +63,7 @@ doc/              # agent-generated artifacts: doc/spec/ (specs), doc/plans/ (st
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored
 lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
-  storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors
+  storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors; resetAppData() (013) clears all four keys
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries/getSupportedCurrencies (005 — deduplicated, sorted list of currencies across SUPPORTED_COUNTRIES, for the expense-form currency dropdown)
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
   trip.ts         # trip setup domain logic (001, complete) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult), getTripFormValues (002, complete — converts a stored Trip back into TripFormValues for pre-filling the edit form); submitNewTrip (003 — validates, clears saved expenses and exchange rates, then builds and saves a new trip via the same buildAndSaveTrip internals as submitTripSetup); pure, dependency-injected, wired up by components/TripSetupForm.tsx and app/page.tsx
@@ -166,6 +166,8 @@ Pulled from the specs so you do not have to open every file. The cited feature f
 - `getCategories(): Category[]` / `saveCategories(categories: Category[]): SaveResult`
 - `getExpenses(): Expense[]` / `saveExpenses(expenses: Expense[]): SaveResult`
 - `getExchangeRates(): ExchangeRate[]` / `saveExchangeRates(rates: ExchangeRate[]): SaveResult`
+- `resetAppData(): SaveResult` — removes all four `STORAGE_KEYS` entries; after a successful call
+  every getter returns its empty fallback (`null`/`[]`) exactly as it does for a never-populated key.
 
 All getters return a safe fallback (`null` or `[]`) on SSR, a missing key, or corrupt/unparseable
 JSON. All setters catch write failures (quota exceeded, storage unavailable) and return
