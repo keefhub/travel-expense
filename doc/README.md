@@ -12,6 +12,9 @@ doc/
       spec.md     gated BA/SA analysis from /feature-spec
       plan.md     task-by-task implementation plan from /writing-plans
       log.txt     per-task execution record from /sdd — decisions, deviations, gate verdicts
+  requirements/
+      YYYY-MM-DD-<slug>.md   impact analysis + feature breakdown from /feature-discovery, for
+                             one plain-prose requirement that became several feature files
   workflow/
       *.md        designs and plans for the pipeline itself, not for a product feature
 ```

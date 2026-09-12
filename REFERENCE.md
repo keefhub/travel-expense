@@ -33,6 +33,10 @@ Runtime deps are only `next`, `react`, `react-dom`. **There is no chart library,
 form library, no state manager, no CSV library.** Feature 009 needs a pie chart and 014 needs CSV —
 hand-roll them or raise adding a dependency with the user first; do not silently add packages.
 
+**v2 (016+) will add a database dependency.** Shared trips are server-backed — see §6 "Shared trips"
+below for the chosen provider/driver and the connection model. That dependency does not exist yet;
+it is added by whichever task in 016's plan first needs `lib/db.ts`, not before.
+
 ## 3. Commands
 
 ```bash
@@ -166,6 +170,24 @@ Pulled from the specs so you do not have to open every file. The cited feature f
   location, description. Empty state = "no expenses to export" message.
 - **Unsaved-input warning** (011): standard `beforeunload` browser warning on the record-expense page
   when the form is dirty; in-app navigation warns too; input is discarded on refresh.
+- **Shared trips / database connection** (v2, 016+): a shared trip's data lives in **Neon serverless
+  Postgres**, accessed via `@neondatabase/serverless` (HTTP-based queries — no persistent TCP socket,
+  so it's safe to call from a short-lived serverless function without exhausting a connection limit)
+  wrapped by **Prisma** (via `@prisma/adapter-neon`) for schema/migrations and type-safe queries. The
+  pooled connection string lives in `DATABASE_URL` (Neon's pgbouncer-fronted pooler endpoint, not the
+  direct one) as an env var — never committed, set in the hosting provider's dashboard for prod and
+  `.env.local` (gitignored) for dev. A single `lib/db.ts` module owns the Prisma client instance
+  (lazily instantiated, reused across invocations within the same warm function); it is imported
+  **only** by Route Handlers under `app/api/*` (or Server Actions) — never by a Client Component,
+  the same boundary `lib/storage.ts` keeps around `localStorage` today but mirrored for the server
+  side. Solo (non-shared) trips never touch this path; they stay on `lib/storage.ts` /
+  `localStorage` exactly as in v1. There is **one** database for the whole app (not one per trip) —
+  a shared trip is a row, not a provisioned resource; creating one is an `INSERT`, nothing more.
+  **Teardown**: the only deletion trigger is the creator starting a new trip — that cascades a
+  delete of the outgoing shared trip's rows (trip, expenses, participants), not just its share
+  token. No idle-time expiry and no standalone "delete this trip" action exist in v2. See
+  [doc/requirements/2026-09-13-shared-trip-expense-tracking.md](doc/requirements/2026-09-13-shared-trip-expense-tracking.md)
+  for the full v2 impact analysis.
 
 `lib/storage.ts` public API (feature 012, complete):
 
@@ -209,7 +231,9 @@ instead of throwing.
 Full rules live in [CLAUDE.md](CLAUDE.md) — this is a summary, not a replacement.
 
 - Build order is **not** file order. It is: 012 → 004 → 010 → 015 → 001 → 002 → 003 → 005 → 006 →
-  011 → 007 → 008 → 009 → 013 → 014. See the table in CLAUDE.md for why.
+  011 → 007 → 008 → 009 → 013 → 014 → 016 → 017 → 018 → 019 → 020 → 021 → 022. See the table in
+  CLAUDE.md for why. 016 begins the v2 shared-trip initiative (see [doc/requirements/2026-09-13-shared-trip-expense-tracking.md](doc/requirements/2026-09-13-shared-trip-expense-tracking.md)),
+  and 022 completes it — all seven v2 slices (016–022) are now authored.
 - One feature file = one unit of work; implement all its scenarios together, nothing beyond them.
 - Progress lives in `git log` (`feat(NNN)` prefixes), not a status file. Check before starting:
   `git log --oneline --grep="^feat(<NNN>)"`, and read `output/error/{feature}.md` if it exists.
@@ -218,8 +242,10 @@ Full rules live in [CLAUDE.md](CLAUDE.md) — this is a summary, not a replaceme
   `@ts-ignore` / `eslint-disable` / deleting the failing code. Max 3 attempts per feature, then stop
   and report.
 
-Other skills: **`/feature-spec`** (deep spec for one feature → `doc/features/{NNN}-{slug}/spec.md`),
-**`/spec-review`** (harden an existing spec), and **`/writing-plans`** (implementation plan →
-`doc/features/{NNN}-{slug}/plan.md` beside the spec).
-All three write under the shared `doc/` root; `/feature-spec` and `/spec-review` handle exactly one
-feature per invocation.
+Other skills: **`/feature-discovery`** (prose requirement → impact analysis and a feature breakdown
+in `doc/requirements/`, then one `features/NNN.{slug}.md` per invocation — the only way new feature
+files get written), **`/feature-spec`** (deep spec for one feature →
+`doc/features/{NNN}-{slug}/spec.md`), **`/spec-review`** (harden an existing spec), and
+**`/writing-plans`** (implementation plan → `doc/features/{NNN}-{slug}/plan.md` beside the spec).
+All write under the shared `doc/` root; `/feature-discovery` (Mode B), `/feature-spec` and
+`/spec-review` handle exactly one feature per invocation.
