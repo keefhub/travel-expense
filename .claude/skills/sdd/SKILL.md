@@ -30,17 +30,22 @@ These are non-negotiable — do not shortcut them under time pressure or when a 
 6. **Dispatch gate before every task** (including the first): confirm the previous task's checkbox, log entry, commit, and both gate verdicts all agree before starting the next one.
 7. **Escalate, don't blindly retry.** If the same task fails for the 2nd consecutive time (implementation failure, or a gate still failing after one fix-and-re-review cycle), stop and ask the user how to proceed. Do not attempt a 3rd automatic try.
 8. **No branch-guard checks.** This is a personal project — direct commits to the current working branch are fine. Do not add protected-branch logic.
+9. **Clean working tree before the run starts.** "Dirty" means **tracked files with uncommitted modifications**. Untracked paths no task will touch are permitted but must be declared. This is not tidiness: every reviewer runs `git status --short` and sees the same tree, so undeclared changes are what produce wrong-baseline review findings — a gate failing on code that is not part of this task at all. The permanently-permitted paths live in [`.claude/repo-profile.md`](../../repo-profile.md) § Known-dirty paths; read them there rather than keeping a copy here.
 
 ---
 
 ## Step 0 — Setup
 
-1. Read the plan file at `<path-to-plan.md>` in full. Note its `**Source:**`, `**Goal:**`, `**Architecture:**` header lines and every `### Task N: [Layer] — <outcome>` section (each with a `**Files**` manifest and `- [ ]` steps, per this repo's `writing-plans` skill conventions). If the plan uses a different heading shape, adapt to it — the invariant is "one task, one Files manifest, one verification command per step," not this exact syntax.
-2. Let `<plan-dir>` be the directory containing the plan file.
-3. **`PROGRESS.md`** — if `<plan-dir>/PROGRESS.md` does not exist, create it (template below) seeded with one unchecked line per task found in the plan. If it exists, read it — it is the source of truth for what's already done, not your memory of a prior session.
-4. **`log.txt`** — if `<plan-dir>/log.txt` does not exist, create an empty file. If it already exists (e.g. from prior manual execution of this same plan), leave existing entries untouched and append below them.
-5. Find the first unchecked task in `PROGRESS.md`. If none — every task is checked — skip to **Completion** below.
-6. Read the repo context packet (`/memories/repo/travel-expense-context.md`) if it exists — it
+1. **Clean-tree precondition — run this FIRST, before anything else in Step 0.** `git status --short`. Treat every path in [`.claude/repo-profile.md`](../../repo-profile.md) § Known-dirty paths as permanently permitted. If any *other* tracked file shows uncommitted modifications, **stop and report** — list the files and ask the user to commit, stash, or declare them. Record whatever they declare; Step 3 of the per-task loop pastes that list into every gate prompt.
+
+   > This is item 1 deliberately. Items 4 and 5 below *create* `PROGRESS.md` and `log.txt`, so a precondition placed after them would trip on files `/sdd` itself had just written.
+
+2. Read the plan file at `<path-to-plan.md>` in full. Note its `**Source:**`, `**Goal:**`, `**Architecture:**` header lines and every `### Task N: [Layer] — <outcome>` section (each with a `**Files**` manifest and `- [ ]` steps, per this repo's `writing-plans` skill conventions). If the plan uses a different heading shape, adapt to it — the invariant is "one task, one Files manifest, one verification command per step," not this exact syntax.
+3. Let `<plan-dir>` be the directory containing the plan file.
+4. **`PROGRESS.md`** — if `<plan-dir>/PROGRESS.md` does not exist, create it (template below) seeded with one unchecked line per task found in the plan. If it exists, read it — it is the source of truth for what's already done, not your memory of a prior session.
+5. **`log.txt`** — if `<plan-dir>/log.txt` does not exist, create an empty file. If it already exists (e.g. from prior manual execution of this same plan), leave existing entries untouched and append below them.
+6. Find the first unchecked task in `PROGRESS.md`. If none — every task is checked — skip to **Completion** below.
+7. Read the repo context packet (`/memories/repo/travel-expense-context.md`) if it exists — it
    distills `REFERENCE.md` §2/§4/§6, `OVERVIEW.md` §1–3, and `design.md` into the thin orientation
    map every implementer subagent is handed. Re-read [REFERENCE.md](../../../REFERENCE.md) itself
    only when a task will modify it (see below), and refresh the packet in the same change. If the

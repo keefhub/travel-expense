@@ -1,6 +1,6 @@
 # AI Workflow Cost Optimization — Implementation Plan
 
-**Status:** Not Started
+**Status:** In Progress
 **Source:** `docs/superpowers/specs/2026-09-12-ai-workflow-optimization-design.md`
 **Goal:** Cut per-feature token and wall-clock cost of the
 `/feature-spec` → `/writing-plans` → `/sdd` pipeline by roughly 40%, while making UI behavior
@@ -63,30 +63,30 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       > `npx <pkg>` invocation can never prove absence; only the project's own manifest and
       > `node_modules/.bin` can. Both verified `0` before Step 2.
 
-- [ ] **Step 2 — Install the test runner.**
+- [x] **Step 2 — Install the test runner.**
       `npm install -D @playwright/test`
       Then `ls node_modules/.bin | grep -c playwright`
       Expected: `1` or greater.
 
-- [ ] **Step 3 — Install the browser binary.**
+- [x] **Step 3 — Install the browser binary.**
       `npx playwright install chromium`
       Expected: exit 0. Chromium downloads, or Playwright reports it is already installed.
 
-- [ ] **Step 4 — Confirm the runner is live.**
+- [x] **Step 4 — Confirm the runner is live.**
       `npx playwright --version`
       Expected: exit 0, output matching `Version 1.<minor>.<patch>`.
 
-- [ ] **Step 5 — Add the config.** Create `playwright.config.ts` with `testDir: "./e2e"`,
+- [x] **Step 5 — Add the config.** Create `playwright.config.ts` with `testDir: "./e2e"`,
       `baseURL: "http://localhost:3000"`, a `webServer` block running `npm run dev` with
       `reuseExistingServer: !process.env.CI`, and a single `chromium` project.
 
-- [ ] **Step 6 — Add the script.** In `package.json`, add `"test:e2e": "playwright test"` to
+- [x] **Step 6 — Add the script.** In `package.json`, add `"test:e2e": "playwright test"` to
       `scripts`.
 
-- [ ] **Step 7 — Ignore run artifacts.** Add `test-results/` and `playwright-report/` to
+- [x] **Step 7 — Ignore run artifacts.** Add `test-results/` and `playwright-report/` to
       `.gitignore`.
 
-- [ ] **Step 8 — Verify config and script landed.**
+- [x] **Step 8 — Verify config and script landed.**
       `grep -c '"test:e2e"' package.json` → Expected: `1`.
       `ls playwright.config.ts` → Expected: exit 0, prints the path.
       `npx tsc --noEmit` → Expected: exit 0, no output.
@@ -109,29 +109,29 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > heading — so the first draft's "navigate and assert the heading, expect 1 passed" step was
 > known-false. Seeding belongs in the first spec written, not in a later repair step.
 
-- [ ] **Step 1 — Read the real storage keys.** Read `REFERENCE.md` §6 and record the exact key
+- [x] **Step 1 — Read the real storage keys.** Read `REFERENCE.md` §6 and record the exact key
       names for the active trip and the category list. Do not guess them.
 
-- [ ] **Step 2 — Write the spec with its fixture.** Create `e2e/010-categories.spec.ts` with a
+- [x] **Step 2 — Write the spec with its fixture.** Create `e2e/010-categories.spec.ts` with a
       `beforeEach` seeding an active trip via `page.addInitScript` using those keys, plus one test
       navigating to `/categories` and asserting the heading is visible.
 
-- [ ] **Step 3 — Run it.**
+- [x] **Step 3 — Run it.**
       `npx playwright test e2e/010-categories.spec.ts`
       Expected: exit 0, output containing `1 passed`.
       If this fails, the seeded keys are wrong — re-read §6 rather than changing the assertion.
 
-- [ ] **Step 4 — Cover behavior only a browser can reach.** Add tests asserting:
+- [x] **Step 4 — Cover behavior only a browser can reach.** Add tests asserting:
       default categories are listed and show no rename/delete action; a custom category added via
       the UI appears with both actions; a blank name is rejected.
 
-- [ ] **Step 5 — Run the spec.**
+- [x] **Step 5 — Run the spec.**
       `npx playwright test e2e/010-categories.spec.ts`
       Expected: exit 0, output containing `4 passed`.
       (Scoped to this spec file deliberately — a whole-suite count would break the moment a later
       feature adds a fifth test.)
 
-- [ ] **Step 6 — Regression run.**
+- [x] **Step 6 — Regression run.**
       `npx tsc --noEmit` → Expected: exit 0, no output.
       `npm run lint` → Expected: exit 0, no output beyond npm's banner.
 
@@ -143,11 +143,11 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 - create: `.claude/repo-profile.md`
 - test: `grep -c` assertions below
 
-- [ ] **Step 1 — Confirm it does not exist yet.**
+- [x] **Step 1 — Confirm it does not exist yet.**
       `ls .claude/repo-profile.md`
       Expected: exit 2, `ls: cannot access '.claude/repo-profile.md': No such file or directory`.
 
-- [ ] **Step 2 — Write the profile** with these five sections, named exactly:
+- [x] **Step 2 — Write the profile** with these five sections, named exactly:
       `## Verification commands` — `tsc` + `lint` always; `npm run build` only when a task touches
       routes, config, or dependencies; `npx playwright test e2e/<spec>` for behavioral scenarios.
       `## Behavioral gate` — Playwright. There is still **no unit-test runner**.
@@ -160,7 +160,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       module boundary, **regardless of its label**; one combined gate for pure UI and route
       wiring. Task-level tiering outranks the feature-level thin rule.
 
-- [ ] **Step 3 — Verify each section by name** (five separate assertions, not a brittle
+- [x] **Step 3 — Verify each section by name** (five separate assertions, not a brittle
       `grep -c '^## '` that any extra heading would break):
       `grep -c '^## Verification commands' .claude/repo-profile.md` → `1`
       `grep -c '^## Behavioral gate' .claude/repo-profile.md` → `1`
@@ -168,7 +168,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       `grep -c '^## Known-dirty paths' .claude/repo-profile.md` → `1`
       `grep -c '^## Gate risk tiers' .claude/repo-profile.md` → `1`
 
-- [ ] **Step 4 — Verify the two rules other tasks cite.**
+- [x] **Step 4 — Verify the two rules other tasks cite.**
       `grep -c 'routes, config, or dependencies' .claude/repo-profile.md` → `1` or greater.
       `grep -c 'regardless of its label' .claude/repo-profile.md` → `1` or greater.
 
@@ -188,31 +188,31 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > **Five slices, not four.** `writing-plans` defines the chain as Types → Data → Domain → UI →
 > Route. A `[Types]` task with no slice makes Task 6's paste rule unsatisfiable on first use.
 
-- [ ] **Step 1 — Confirm the stale claim is present.**
+- [x] **Step 1 — Confirm the stale claim is present.**
       `grep -c 'feature 005 complete; 006 not yet started' memories/repo/travel-expense-context.md`
       Expected: `1`.
 
-- [ ] **Step 2 — Confirm the real state contradicts it.**
+- [x] **Step 2 — Confirm the real state contradicts it.**
       `git log --oneline --grep='^feat(015)' | wc -l`
       Expected: `3`.
 
-- [ ] **Step 3 — Correct the file layout section.** Update the heading to state that all 15
+- [x] **Step 3 — Correct the file layout section.** Update the heading to state that all 15
       features in `features/` are committed, and refresh the tree beneath it against
       `find app lib components -type f`.
 
-- [ ] **Step 4 — Extract the five slices.** Move layer-specific content out of the core into
+- [x] **Step 4 — Extract the five slices.** Move layer-specific content out of the core into
       `memories/repo/slices/`. Each slice holds only what a task of that layer needs: its paths,
       its boundary rules, its verification commands.
 
-- [ ] **Step 5 — Verify the stale line is gone.**
+- [x] **Step 5 — Verify the stale line is gone.**
       `grep -c 'feature 005 complete; 006 not yet started' memories/repo/travel-expense-context.md`
       Expected: `0`.
 
-- [ ] **Step 6 — Verify all five slices exist.**
+- [x] **Step 6 — Verify all five slices exist.**
       `ls memories/repo/slices/*.md | wc -l`
       Expected: `5`.
 
-- [ ] **Step 7 — Verify the size budget on slices AND core.** A dispatch receives core **plus**
+- [x] **Step 7 — Verify the size budget on slices AND core.** A dispatch receives core **plus**
       slice, so capping only the slices would leave the payload unchanged.
       `wc -c memories/repo/slices/*.md` → Expected: every per-file byte count below `2500`.
       `wc -c memories/repo/travel-expense-context.md` → Expected: below `3000` (from `12255`).
@@ -249,9 +249,16 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 - [ ] **Step 4 — Cite the profile, do not inline it.** The permitted-path list lives in
       `.claude/repo-profile.md`; Step 0 points at it rather than copying it.
 
-- [ ] **Step 5 — Verify the invariant and the check landed.**
-      `grep -ci 'working tree' .claude/skills/sdd/SKILL.md` → Expected: `2` or greater.
+- [x] **Step 5 — Verify the invariant and the check landed.**
+      `grep -c '^9\. \*\*Clean working tree' .claude/skills/sdd/SKILL.md` → Expected: `1`.
+      `grep -c '^1\. \*\*Clean-tree precondition' .claude/skills/sdd/SKILL.md` → Expected: `1`.
       `grep -c 'repo-profile' .claude/skills/sdd/SKILL.md` → Expected: `1` or greater.
+
+      > Corrected during execution. This step originally asserted `grep -ci 'working tree'` ≥ 2,
+      > which returned `1`: the invariant uses that phrase but Step 0's item reads "Clean-tree
+      > precondition". The proxy string did not match how the text actually reads, so the check was
+      > replaced with two assertions naming the two real sites rather than padding the prose to
+      > satisfy a grep.
 
 - [ ] **Step 6 — Verify Step 6's staging rail was NOT disturbed.**
       `grep -c 'git add -A' .claude/skills/sdd/SKILL.md`
