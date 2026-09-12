@@ -13,8 +13,8 @@ compiler red step is now **kept** (see Task 6), reversing the first draft and de
 **Architecture:**
 Three changes stack in dependency order. First, Playwright becomes a proven capability — nothing
 references it until a spec actually passes. Second, repo-specific facts move into
-`.claude/repo-profile.md` and a sliced context packet; the skills **cite** that profile rather than
-inlining its rules. Third, the three skills are edited surgically to consume those artifacts.
+`.claude/repo-profile.md` and a sliced context packet, cutting the per-dispatch payload from
+12,255 bytes to core+slice (~4.5-5.5 KB); the skills **cite** that profile rather than inlining it. Third, the three skills are edited surgically to consume those artifacts.
 
 **Tech Stack:** Next.js 16.3.3 (App Router), React 19.2.8, TypeScript 5 (`strict`), Tailwind CSS 4.
 Data: browser local storage — no backend. Verification: `npm run lint`, `npx tsc --noEmit`,
