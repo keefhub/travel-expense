@@ -45,11 +45,13 @@ These are non-negotiable — do not shortcut them under time pressure or when a 
 4. **`PROGRESS.md`** — if `<plan-dir>/PROGRESS.md` does not exist, create it (template below) seeded with one unchecked line per task found in the plan. If it exists, read it — it is the source of truth for what's already done, not your memory of a prior session.
 5. **`log.txt`** — if `<plan-dir>/log.txt` does not exist, create an empty file. If it already exists (e.g. from prior manual execution of this same plan), leave existing entries untouched and append below them.
 6. Find the first unchecked task in `PROGRESS.md`. If none — every task is checked — skip to **Completion** below.
-7. Read the repo context packet (`/memories/repo/travel-expense-context.md`) if it exists — it
-   distills `REFERENCE.md` §2/§4/§6, `OVERVIEW.md` §1–3, and `design.md` into the thin orientation
-   map every implementer subagent is handed. Re-read [REFERENCE.md](../../../REFERENCE.md) itself
-   only when a task will modify it (see below), and refresh the packet in the same change. If the
-   packet is missing or clearly stale, regenerate it from the source files.
+7. Read the **core** context packet (`memories/repo/travel-expense-context.md`) — the orientation
+   map handed to every subagent. Each dispatch also receives **one** layer slice from
+   `memories/repo/slices/`, chosen by the task's `[Layer]` tag per
+   [`.claude/repo-profile.md`](../../repo-profile.md) § Layer slices; where no slice matches the
+   tag, the dispatch gets the core alone and is told so. Never guess a slice. Re-read
+   [REFERENCE.md](../../../REFERENCE.md) itself only when a task will modify it (see below), and
+   refresh the core or the affected slice in that same change if it has gone stale.
 
 **`PROGRESS.md` template:**
 
@@ -71,7 +73,11 @@ Each line is ticked with its commit hash appended only in Step 6 below, e.g. `- 
 
 [REFERENCE.md](../../../REFERENCE.md) states its own policy: "if it contradicts the code, the code wins; fix this file in the same change." `/sdd` enforces that policy at every task, since each task is exactly one committed change and the doc update belongs in that same commit — not a cleanup pass at the end of the plan.
 
-This is **not optional busywork run at the end** — wire it into the loop that already exists: the implementer subagent updates the doc as part of its task (Step 2), the spec reviewer checks it was done (Step 3, Gate A), and the controller stages it with everything else the task touched (Step 6). Never touch either file from outside a task's own diff.
+**The controller owns this update, not the implementer.** Wire it into the loop as: the implementer builds and reports (Step 2), **the controller updates REFERENCE.md against the table below — after the implementer returns and before the gates are dispatched (Step 2b)** — the spec reviewer then checks that update against the real code as part of the diff it reviews (Step 3, Gate A), and the controller stages it with everything else the task touched (Step 6). Never touch either file from outside a task's own diff.
+
+The timing is the point. Moving the work off the implementer saves every dispatch a 30 KB read, but making the edit *after* the gates would leave the one part of each commit that no reviewer ever sees. Doing it before they are dispatched keeps it inside the reviewed diff.
+
+The controller reads only the section the table points at — not the whole file.
 
 **REFERENCE.md — update in the same task's diff when the task:**
 
@@ -119,9 +125,13 @@ Architecture: {{plan.md Architecture paragraph}}
 Source: {{plan.md Source line, if present}}
 
 REPO CONVENTIONS
-{{the distilled repo context packet (memories/repo/travel-expense-context.md) —
-  commands, layer boundaries, storage keys, Next.js 16 gotchas. Paste the packet,
-  not the raw REFERENCE.md/OVERVIEW.md/design.md files.}}
+{{the core packet (memories/repo/travel-expense-context.md) PLUS the one slice from
+  memories/repo/slices/ matching this task's [Layer] tag. Where no slice matches the
+  tag, paste the core alone and say so. Paste these, never the raw
+  REFERENCE.md/OVERVIEW.md/design.md files.}}
+
+If anything this task needs is missing from the context above, say so in your
+report rather than guessing — the slice gets corrected.
 
 TASK TO IMPLEMENT (verbatim from plan.md)
 {{full "### Task N: ..." section — Files manifest and every step}}
@@ -136,34 +146,63 @@ Instructions:
 3. Do not perform any step titled "Commit" — stop once the task's
    regression verification (lint/typecheck/build, or the task's final
    check) passes.
-4. Check REFERENCE.md against what you just built, using this table:
-   {{paste the "REFERENCE.md — update in the same task's diff when..."
-     table from the skill's "Keeping REFERENCE.md and CLAUDE.md current"
-     section}}
-   If any row applies, update that section of REFERENCE.md as part of this
-   same change — do not leave it for later. If none apply, leave
-   REFERENCE.md untouched. Leave CLAUDE.md untouched unless this task's own
-   plan text explicitly calls for a workflow/process change.
-5. Report back: every file created/modified/deleted (including REFERENCE.md
-   if you touched it, and why), the literal output of each verification
-   command you ran, and any deviation from the plan as written (extra
-   file, different name, a step that turned out unnecessary).
+4. Leave REFERENCE.md and CLAUDE.md alone. The controller owns both — do
+   not read or edit them for this task.
+5. Report back: every file created/modified/deleted, the literal output of
+   each verification command you ran, and any deviation from the plan as
+   written (extra file, different name, a step that turned out
+   unnecessary).
 ```
 
 If the implementer reports it could not complete a step, or a verification command's real output didn't match `Expected:`, treat this as a **failed attempt** for this task (see Escalation).
 
+### Step 2b — Controller updates REFERENCE.md (before dispatching gates)
+
+Check what the implementer actually changed against the REFERENCE.md table in *Keeping REFERENCE.md and CLAUDE.md current*. If a row applies, update that section now — reading only that section, not the whole file. If no row applies, leave REFERENCE.md untouched; do not add speculative or restating-the-obvious lines.
+
+This must happen **before** Step 3, so the edit is inside the diff the gates review.
+
 ### Step 3 — Two review gates (parallel, fresh subagents)
 
-For a **thin feature** (≤2 Gherkin scenarios, no new storage key or module boundary — per
-`CLAUDE.md`'s cost-optimization rules), run **one combined gate** instead of two: dispatch a single
-fresh subagent with the Gate A brief, and append the Gate B checklist (bugs, edge cases, pattern
-consistency) to its report instruction. For all other features, run both gates as below.
+**How many gates this task gets** is decided per task by its `[Layer]`, not by the size of the
+feature it belongs to. [`.claude/repo-profile.md`](../../repo-profile.md) § Gate risk tiers is the
+source of the rule; do not restate its criteria here. In short: a task touching types, data,
+domain logic, `lib/`, or any module boundary gets **two** independent gates; pure UI and route
+wiring with no `lib/` change gets **one** combined gate — a single fresh subagent given the Gate A
+brief with the Gate B checklist appended to its report instruction.
+
+Task-level tiering outranks the feature-level thin rule. A task touching `lib/` gets two gates even
+inside a thin feature; `CLAUDE.md`'s thin-feature rule governs only whether `/feature-spec` is
+skipped.
+
+**Every gate prompt opens with the baseline contract below, pasted in by the controller.** Both
+false-positive classes seen in practice came from its absence — a reviewer judging the working tree
+instead of this task's diff, and a reviewer flagging the not-yet-existing commit as a gap.
+
+```
+BASELINE — read this before anything else.
+
+THE DIFF UNDER REVIEW (this is the whole change; nothing else is yours to judge):
+{{the exact `git diff` the controller intends to commit, pasted verbatim}}
+
+UNRELATED UNCOMMITTED PATHS, declared at Step 0 — NOT part of this task, never a finding:
+{{the declared known-dirty list, by name, or "none"}}
+
+WHERE YOU ARE IN THE PIPELINE: the commit does not exist yet. `PROGRESS.md` and `log.txt` are
+written by the controller only after you pass. Their absence, an unticked checkbox, and a missing
+commit are the correct state right now and are never a gap.
+
+If your reading of the repo disagrees with the diff above, re-read against `git show HEAD:<path>`
+before reporting — the working tree may contain changes that are not this task's.
+```
 
 Dispatch **both** of the following in the **same message** (two `Agent` tool calls, `subagent_type: general-purpose`, `run_in_background: false`) so they run in parallel and you block on both before deciding.
 
 **Gate A — Spec/requirements reviewer:**
 
 ```
+{{paste the BASELINE block above, filled in, as the first thing in this prompt}}
+
 You are reviewing whether a just-completed implementation task actually
 satisfies its specification. You were not involved in writing the code —
 verify everything yourself from the real files, never from a summary
@@ -204,15 +243,20 @@ reviewer covers that. Do not edit any files.
 **Gate B — Code-quality reviewer:**
 
 ```
+{{paste the BASELINE block above, filled in, as the first thing in this prompt}}
+
 You are reviewing a just-completed implementation task for correctness and
 consistency with this codebase's own patterns — not against the spec (a
 separate reviewer covers that). Verify everything from the real files, not
 from a summary someone else gives you.
 
 REPO CONVENTIONS
-{{the distilled repo context packet (memories/repo/travel-expense-context.md) —
-  layer boundaries, lint/typecheck/build commands, error-handling style,
-  anything relevant to this task's files}}
+{{the core packet (memories/repo/travel-expense-context.md) PLUS the one slice from
+  memories/repo/slices/ matching this task's [Layer] tag. Where no slice matches the
+  tag, paste the core alone and say so.}}
+
+If anything you need to judge this task is missing from the context above, say so
+in your report rather than guessing — the slice gets corrected.
 
 TASK AS IMPLEMENTED (verbatim task text from plan.md, for context only)
 {{full "### Task N: ..." section}}
@@ -235,7 +279,7 @@ covers that. Do not edit any files.
 
 ### Step 4 — Gate decision
 
-- **Both PASS** (or the single combined gate PASSes for a thin feature) → go to Step 5 (commit).
+- **Both PASS** (or the single combined gate PASSes, for a one-gate task) → go to Step 5 (commit).
 - **One or both FAIL** (or the combined gate FAILs) → dispatch a fresh fix subagent (`general-purpose`, foreground) scoped to only the failing findings:
 
 ```
@@ -253,7 +297,7 @@ REVIEWER FINDINGS TO FIX
 Report back: what you changed and why, file by file.
 ```
 
-Then re-run **only the gate(s) that failed** — a fresh subagent again, same prompt template as Step 3. **Exception:** if the fix touches files or logic that the _passing_ gate already reviewed, re-run **both** gates (for a thin feature's single combined gate, simply re-run it), since the passing verdict no longer covers the current diff.
+Then re-run **only the gate(s) that failed** — a fresh subagent again, same prompt template as Step 3. **Exception:** if the fix touches files or logic that the _passing_ gate already reviewed, re-run **both** gates (for a one-gate task, simply re-run the combined gate), since the passing verdict no longer covers the current diff.
 
 This fix-and-re-review cycle is the task's **one allowed retry**. If, after it, either gate still fails, that is the task's 2nd consecutive failure — go to **Escalation**, do not fix-and-re-review a second time.
 
@@ -325,7 +369,7 @@ Review Gate — Quality: PASS (attempt <n>)
 =====================================================================
 ```
 
-For a thin feature's single combined gate, replace the two `Review Gate —` lines with one:
+For a one-gate task, replace the two `Review Gate —` lines with one:
 
 ```
 Review Gate — Combined: PASS (attempt <n>)

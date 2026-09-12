@@ -309,12 +309,22 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       review. Leave Gate A's `REFERENCE.md` check in place. The controller reads only the section
       the update table points at, not the whole 30 KB file.
 
-- [ ] **Step 7 — Verify the baseline contract reached both prompts.**
-      `grep -c 'Their absence is never a gap' .claude/skills/sdd/SKILL.md`
-      Expected: `2`.
+- [x] **Step 7 — Verify the baseline contract reached both prompts.**
+      `grep -c 'BASELINE — read this before anything else' .claude/skills/sdd/SKILL.md` → `1`.
+      `grep -c 'paste the BASELINE block above' .claude/skills/sdd/SKILL.md` → `2`.
 
-- [ ] **Step 8 — Verify no tiering rule was orphaned.**
-      `grep -cin 'thin feature' .claude/skills/sdd/SKILL.md` → Expected: `0`.
+      > Corrected during execution. This originally expected the phrase twice, assuming the block
+      > would be duplicated into each gate prompt. It was written once as a shared template with a
+      > paste pointer in each prompt instead — one source rather than two copies that can drift.
+      > The assertion now checks that shape: one template, two pointers.
+
+- [x] **Step 8 — Verify no tiering rule was orphaned.**
+      `grep -cin 'thin feature' .claude/skills/sdd/SKILL.md` → Expected: `1`.
+
+      > Corrected during execution. Expecting `0` was wrong: the surviving mention is the
+      > precedence statement ("a task touching `lib/` gets two gates even inside a thin feature"),
+      > which *must* name the thin rule in order to override it. The three orphaned gate-count
+      > rules are gone; this one is load-bearing.
       `grep -c 'memories/repo/slices' .claude/skills/sdd/SKILL.md` → Expected: `3`.
       `grep -c 'Check REFERENCE.md against what you just built' .claude/skills/sdd/SKILL.md`
       → Expected: `0`.
