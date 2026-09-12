@@ -124,6 +124,8 @@ export function submitExpense(
 
 export const RECENT_EXPENSE_LIMIT = 5;
 
+export const EXPENSE_BATCH_SIZE = 10;
+
 export function getRecentExpenses(
   expenses: Expense[],
   limit: number = RECENT_EXPENSE_LIMIT
