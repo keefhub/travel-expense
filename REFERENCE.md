@@ -5,7 +5,8 @@ Everything here is verified against the working tree as of 2026-08-31 — if it 
 code, the code wins; fix this file in the same change.
 
 **Read order for a new task:** this file → [features/OVERVIEW.md](features/OVERVIEW.md) §1–3 →
-the one `features/NNN.*.md` you are implementing. Do not read all of `features/` at once.
+[design.md](design.md) (for any task touching UI) → the one `features/NNN.*.md` you are implementing.
+Do not read all of `features/` at once.
 
 ---
 
@@ -14,6 +15,7 @@ the one `features/NNN.*.md` you are implementing. Do not read all of `features/`
 A **mobile-first, offline-capable travel expense tracker**. No backend, no database, no API routes —
 **all state lives in browser `localStorage`**. One active trip at a time; creating a new trip deletes
 the old one after confirmation. Full product context: [features/OVERVIEW.md](features/OVERVIEW.md) §1–3.
+Visual/interaction rules (color, type, spacing, component states): [design.md](design.md).
 
 ## 2. Stack (from [package.json](package.json))
 

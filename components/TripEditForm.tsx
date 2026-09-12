@@ -13,14 +13,20 @@ import {
   type TripFormValues,
   type TripValidationResult,
 } from "@/lib/trip";
+import DateField from "@/components/DateField";
 
 export default function TripEditForm({ trip }: { trip: Trip }) {
   const router = useRouter();
-  const [values, setValues] = useState<TripFormValues>(() => getTripFormValues(trip));
+  const [values, setValues] = useState<TripFormValues>(() =>
+    getTripFormValues(trip),
+  );
   const [errors, setErrors] = useState<TripValidationResult["errors"]>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const durationDays = calculateTripDurationDays(values.startDate, values.endDate);
+  const durationDays = calculateTripDurationDays(
+    values.startDate,
+    values.endDate,
+  );
   const currency = getCurrencyForCountry(values.destinationCountry);
 
   function handleSubmit(e: FormEvent) {
@@ -50,7 +56,9 @@ export default function TripEditForm({ trip }: { trip: Trip }) {
         <select
           id="destinationCountry"
           value={values.destinationCountry}
-          onChange={(e) => setValues({ ...values, destinationCountry: e.target.value })}
+          onChange={(e) =>
+            setValues({ ...values, destinationCountry: e.target.value })
+          }
         >
           <option value="">Select a country</option>
           {SUPPORTED_COUNTRIES.map((c) => (
@@ -59,32 +67,30 @@ export default function TripEditForm({ trip }: { trip: Trip }) {
             </option>
           ))}
         </select>
-        {errors.destinationCountry && <p role="alert">{errors.destinationCountry}</p>}
+        {errors.destinationCountry && (
+          <p role="alert">{errors.destinationCountry}</p>
+        )}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="startDate">Start date</label>
-        <input
-          id="startDate"
-          type="date"
-          value={values.startDate}
-          onChange={(e) => setValues({ ...values, startDate: e.target.value })}
-        />
-        {errors.startDate && <p role="alert">{errors.startDate}</p>}
-      </div>
+      <DateField
+        id="startDate"
+        label="Start date"
+        value={values.startDate}
+        onChange={(startDate) => setValues({ ...values, startDate })}
+        error={errors.startDate}
+        hint="Tap the field to pick a date from the calendar."
+      />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="endDate">End date</label>
-        <input
-          id="endDate"
-          type="date"
-          value={values.endDate}
-          onChange={(e) => setValues({ ...values, endDate: e.target.value })}
-        />
-        {errors.endDate && <p role="alert">{errors.endDate}</p>}
-      </div>
+      <DateField
+        id="endDate"
+        label="End date"
+        value={values.endDate}
+        onChange={(endDate) => setValues({ ...values, endDate })}
+        error={errors.endDate}
+        hint="Tap the field to pick a date from the calendar."
+      />
 
-      <p className="font-mono text-sm text-[var(--muted)]">
+      <p className="font-mono text-sm text-(--muted)">
         {Number.isFinite(durationDays) && durationDays > 0
           ? `${durationDays} ${durationDays === 1 ? "day" : "days"}`
           : "-"}
@@ -102,12 +108,18 @@ export default function TripEditForm({ trip }: { trip: Trip }) {
         {errors.budget && <p role="alert">{errors.budget}</p>}
       </div>
 
-      <p className="font-mono text-sm text-[var(--muted)]">Trip currency: {currency ?? "-"}</p>
+      <p className="font-mono text-sm text-(--muted)">
+        Trip currency: {currency ?? "-"}
+      </p>
 
       {saveError && <p role="alert">{saveError}</p>}
 
-      <button type="submit">Save changes</button>
-      <Link href="/trip/new">Start a new trip</Link>
+      <button type="submit" className="btn-primary">
+        Save changes
+      </button>
+      <Link href="/trip/new" className="btn-secondary text-center">
+        Start a new trip
+      </Link>
     </form>
   );
 }

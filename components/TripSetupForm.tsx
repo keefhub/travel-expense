@@ -10,6 +10,7 @@ import {
   type TripValidationResult,
   type SubmitTripResult,
 } from "@/lib/trip";
+import DateField from "@/components/DateField";
 
 export default function TripSetupForm({
   onSaved,
@@ -21,7 +22,7 @@ export default function TripSetupForm({
     deps: {
       getCurrencyForCountry: (country: string) => string | null;
       saveTrip: (trip: Trip) => SaveResult;
-    }
+    },
   ) => SubmitTripResult;
 }) {
   const [values, setValues] = useState<TripFormValues>({
@@ -60,7 +61,9 @@ export default function TripSetupForm({
         <select
           id="destinationCountry"
           value={values.destinationCountry}
-          onChange={(e) => setValues({ ...values, destinationCountry: e.target.value })}
+          onChange={(e) =>
+            setValues({ ...values, destinationCountry: e.target.value })
+          }
         >
           <option value="">Select a country</option>
           {SUPPORTED_COUNTRIES.map((c) => (
@@ -69,30 +72,28 @@ export default function TripSetupForm({
             </option>
           ))}
         </select>
-        {errors.destinationCountry && <p role="alert">{errors.destinationCountry}</p>}
+        {errors.destinationCountry && (
+          <p role="alert">{errors.destinationCountry}</p>
+        )}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="startDate">Start date</label>
-        <input
-          id="startDate"
-          type="date"
-          value={values.startDate}
-          onChange={(e) => setValues({ ...values, startDate: e.target.value })}
-        />
-        {errors.startDate && <p role="alert">{errors.startDate}</p>}
-      </div>
+      <DateField
+        id="startDate"
+        label="Start date"
+        value={values.startDate}
+        onChange={(startDate) => setValues({ ...values, startDate })}
+        error={errors.startDate}
+        hint="Tap the field to pick a date from the calendar."
+      />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="endDate">End date</label>
-        <input
-          id="endDate"
-          type="date"
-          value={values.endDate}
-          onChange={(e) => setValues({ ...values, endDate: e.target.value })}
-        />
-        {errors.endDate && <p role="alert">{errors.endDate}</p>}
-      </div>
+      <DateField
+        id="endDate"
+        label="End date"
+        value={values.endDate}
+        onChange={(endDate) => setValues({ ...values, endDate })}
+        error={errors.endDate}
+        hint="Tap the field to pick a date from the calendar."
+      />
 
       <div className="flex flex-col gap-1">
         <label htmlFor="budget">Budget (optional)</label>
@@ -108,7 +109,9 @@ export default function TripSetupForm({
 
       {saveError && <p role="alert">{saveError}</p>}
 
-      <button type="submit">Start tracking</button>
+      <button type="submit" className="btn-primary">
+        Start tracking
+      </button>
     </form>
   );
 }

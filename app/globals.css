@@ -1,26 +1,145 @@
 @import "tailwindcss";
 
+/* Each token is declared once, as a light/dark pair, and `color-scheme` picks
+   which half resolves. That keeps the palette in one place instead of
+   duplicating a dark block per selector.
+   `color-scheme` is switched three ways, in precedence order:
+     1. `data-theme="light"` / `"dark"` - the explicit choice from Settings.
+     2. No `data-theme` - the "System" choice, which follows the device through
+        the media query below and so keeps tracking it while the app is open.
+   lib/theme.ts and the pre-paint script in app/layout.tsx only ever set or
+   remove `data-theme`; they never resolve the OS preference themselves, so the
+   switch and the rendered colors cannot disagree. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: light-dark(#ffffff, #0a0a0a);
+  --surface: light-dark(#f4f4f5, #18181b);
+  --foreground: light-dark(#171717, #ededed);
+  --muted: light-dark(#71717a, #a1a1aa);
+  --border: light-dark(#e4e4e7, #27272a);
+  --accent: light-dark(#0d9488, #2dd4bf);
+  --accent-foreground: light-dark(#ffffff, #0a0a0a);
+  --danger: light-dark(#dc2626, #f87171);
+  --warning: light-dark(#d97706, #fbbf24);
+  --success: light-dark(#16a34a, #4ade80);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* `:is(...)`, not `:where(...)`. `:where()` contributes zero specificity, so
+     these declarations lost to Tailwind's preflight reset
+     (`button, input, select, textarea { background-color: transparent;
+     border-radius: 0 }`) on source order alone: every field rendered
+     transparent with square corners. `:is()` carries the specificity of its
+     most specific argument, which is enough to win. */
+  :is(input, select, textarea) {
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+    color: var(--foreground);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    accent-color: var(--accent);
+  }
+
+  /* Native date fields: the picker indicator is the affordance that opens the
+     calendar, so give it a pointer cursor and a slightly larger hit area. Its
+     glyph color follows `color-scheme`, set on :root above. */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    padding: 0.25rem;
+    margin-inline-end: -0.25rem;
+  }
+
+  :is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  [role="alert"] {
+    color: var(--danger);
+    font-size: 0.875rem;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .btn-primary {
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: transform 150ms;
+  }
+
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+
+  .btn-secondary {
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background-color: transparent;
+    color: var(--foreground);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: transform 150ms;
+  }
+
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+
+  .btn-danger {
+    min-height: 2.75rem;
+    border-radius: 0.5rem;
+    background-color: var(--danger);
+    color: var(--accent-foreground);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: transform 150ms;
+  }
+
+  .btn-danger:active {
+    transform: scale(0.98);
+  }
 }
