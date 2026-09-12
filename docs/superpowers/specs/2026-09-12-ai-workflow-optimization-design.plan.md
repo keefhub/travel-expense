@@ -414,7 +414,9 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 - [ ] **Step 5 — Leave the refactor template unchanged.** It is still correct.
 
 - [ ] **Step 6 — Verify.**
-      `grep -ci probe .claude/skills/writing-plans/references/PLAN-TEMPLATES.md` → Expected: `0`.
+      `grep -ci probe .claude/skills/writing-plans/references/PLAN-TEMPLATES.md` → Expected: `1`
+      — the rule telling an implementer *not* to create a throwaway probe file. (Corrected during
+      execution, same reason as Task 7 Step 8: a prohibition must name what it prohibits.)
       `grep -c 'playwright test' .claude/skills/writing-plans/references/PLAN-TEMPLATES.md`
       → Expected: `2` or greater.
       `grep -c 'TS2305' .claude/skills/writing-plans/references/PLAN-TEMPLATES.md`

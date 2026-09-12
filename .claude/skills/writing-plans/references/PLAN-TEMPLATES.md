@@ -1,6 +1,6 @@
 # Plan templates
 
-Copy these shapes literally. Every command below is a real command in this repo (Next.js 16 / TypeScript / ESLint 9, **no test runner installed** — see the parent SKILL.md's Provenance table).
+Copy these shapes literally. Every command below is a real command in this repo (Next.js 16 / TypeScript / ESLint 9; **no unit-test runner**, but `@playwright/test` is installed — see `.claude/repo-profile.md`).
 
 ---
 
@@ -32,11 +32,15 @@ When the plan is amended later, a dated `**Amended:**` line joins the header (se
 
 ---
 
-## 2. Test-first task template (the default)
+## 2. Contract task template (the default)
 
-Use this for anything that changes behavior. The loop is: **write the failing check → run it, expect failure → minimal implementation → run it, expect pass → regression run → commit.**
+Use this for anything that changes behavior. The plan states the **contract**; the implementer
+writes the body. The loop is: **write the call site → run it, expect a quoted compiler failure →
+implement → run it, expect pass → regression run → commit.**
 
-Because this repo has no test runner, the failing check is a **compiler** failure — a call site that references something not yet written. That is a genuine red signal here, with an exact, verified output format.
+Because this repo has no unit-test runner, the red step is a **compiler** failure. That is a real
+signal here: `TS2305` says a named export with a declared shape is missing, which is exactly what
+the contract below promises.
 
 ```markdown
 ### Task 3: [Domain] — validateExpense rejects a non-positive amount
@@ -44,73 +48,90 @@ Because this repo has no test runner, the failing check is a **compiler** failur
 **Files**
 - create: `lib/expenses/validateExpense.ts`
 - modify: `lib/types.ts`
-- test: `npx tsc --noEmit`, `npm run lint`, `npm run build`
+- test: `npx tsc --noEmit`, `npm run lint`
 
-- [ ] **Step 1 — Write the failing check.** Create
-      `lib/expenses/validateExpense.ts` containing only the call site that
-      states the contract:
+- [ ] **Step 1 — Write the failing check.** In `app/expenses/new/page.tsx` (the real consumer —
+      do not create a throwaway probe file), add the call site:
 
       ```ts
-      import type { ExpenseFormValues, ValidationResult } from "@/lib/types";
-
-      const probe: ValidationResult = validateExpense({ amount: "0" } as ExpenseFormValues);
+      import { validateExpense } from "@/lib/expenses/validateExpense";
       ```
 
 - [ ] **Step 2 — Run it and confirm it fails.**
       `npx tsc --noEmit`
-      Expected: exit 2, output exactly —
-      `lib/expenses/validateExpense.ts(1,15): error TS2305: Module '"@/lib/types"' has no exported member 'ExpenseFormValues'.`
+      Expected: exit 2, error TS2307 on `app/expenses/new/page.tsx` —
+      `Cannot find module '@/lib/expenses/validateExpense' or its corresponding type declarations.`
+      (Match the code and message. Do not predict the column.)
 
-- [ ] **Step 3 — Add the types.** In `lib/types.ts`, export
-      `ExpenseFormValues` (all fields `string`) and
-      `ValidationResult` (`{ errors: Record<string, string>; warnings: Record<string, string> }`).
+- [ ] **Step 3 — Add the types.** In `lib/types.ts`, export `ExpenseFormValues` (all fields
+      `string`) and `ValidationResult`
+      (`{ errors: Record<string, string>; warnings: Record<string, string> }`).
 
-- [ ] **Step 4 — Re-run; confirm the error moved, not vanished.**
-      `npx tsc --noEmit`
-      Expected: exit 2, output exactly —
-      `lib/expenses/validateExpense.ts(3,32): error TS2304: Cannot find name 'validateExpense'.`
+- [ ] **Step 4 — Implement to this contract.**
 
-- [ ] **Step 5 — Minimal implementation.** Implement
-      `export function validateExpense(values: ExpenseFormValues): ValidationResult`
-      returning `errors.amount = "Enter an amount greater than 0."` when
-      `Number(values.amount)` is not finite or is `<= 0`, and empty objects
-      otherwise. Delete the `probe` line from Step 1.
+      ```
+      File: lib/expenses/validateExpense.ts  (create)
+      Exports: validateExpense(values: ExpenseFormValues): ValidationResult
+      Behavior: errors.amount = "Enter an amount greater than 0." when
+                Number(values.amount) is not finite or <= 0; empty objects otherwise
+      Constraints: pure — no DOM, no storage, no clock. Must not modify lib/storage.ts
+      ```
 
-- [ ] **Step 6 — Run it and confirm it passes.**
+- [ ] **Step 5 — Run it and confirm it passes.**
       `npx tsc --noEmit`
       Expected: exit 0, no output.
 
-- [ ] **Step 7 — Regression run.**
-      `npm run lint` → Expected: exit 0, no output.
-      `npm run build` → Expected: exit 0, ending with the route table.
+- [ ] **Step 6 — Regression run.** Per `.claude/repo-profile.md` § Verification commands.
+      `npm run lint` → Expected: exit 0, no output beyond npm's banner.
+      (`npm run build` only if this task touched routes, config, or dependencies — it did not.)
 
-- [ ] **Step 8 — Commit.**
-      `git add lib/types.ts lib/expenses/validateExpense.ts && git commit`
+- [ ] **Step 7 — Commit.**
       Message: `feat(005): reject non-positive expense amounts`
 ```
 
 ### Rules this template encodes
 
+- **The plan gives the contract, not the body.** Literal code appears only where exactness is the
+  point — a regex, a formula, an API call with a known gotcha.
 - Every step is one action with one verification.
-- Every `Expected:` is a literal string an implementer can compare against, not a description of success.
-- The red step must actually run before the implementation exists — a step that cannot fail proves nothing.
-- Steps 2 and 4 differ deliberately: the error *moving* is what shows the previous step worked.
+- Every `Expected:` is something an implementer can compare against — an error code and message, not
+  a description of success, and not a predicted column number.
+- The red step must actually run before the implementation exists. Put it in the real consuming
+  file; never create a throwaway file whose only purpose is to be deleted.
 - Checkboxes are `- [ ]` in the plan as written, ticked during execution.
 
-### Verifying behavior the compiler cannot see
+---
 
-For UI behavior — a banner, a redirect, a chart, a responsive layout — replace the compiler step with a manual check phrased so it has a yes/no answer:
+## 2b. Playwright task template (behavior the compiler cannot see)
+
+For a banner, a redirect, a chart, a responsive layout — anything `tsc` cannot reach.
 
 ```markdown
-- [ ] **Step 5 — Verify in the browser.** Run `npm run dev`, open
-      http://localhost:3000/expenses/new, enter a date one day after the trip's
-      end date, and submit.
-      Expected: the expense saves and the dashboard opens; the text
-      "This date is outside your trip dates." was shown above the date field
-      before submitting; submission was not blocked.
+### Task 5: [UI] — the record-expense form warns before discarding unsaved input
+
+**Files**
+- modify: `components/ExpenseForm.tsx`
+- create: `e2e/011-unsaved-warning.spec.ts`
+- test: `npx playwright test e2e/011-unsaved-warning.spec.ts`
+
+- [ ] **Step 1 — Write the spec first.** Create `e2e/011-unsaved-warning.spec.ts` covering: a
+      dirty form warns on in-app navigation; a clean form navigates with no warning.
+      Seed `localStorage` via `page.addInitScript` **before** first render — every route
+      redirects to `/` when `getTrip()` is `null`.
+
+- [ ] **Step 2 — Run it and confirm it fails.**
+      `npx playwright test e2e/011-unsaved-warning.spec.ts`
+      Expected: exit 1, `2 failed`.
+
+- [ ] **Step 3 — Implement to the contract.** (contract block, as in template 2)
+
+- [ ] **Step 4 — Run it and confirm it passes.**
+      `npx playwright test e2e/011-unsaved-warning.spec.ts`
+      Expected: exit 0, `2 passed`.
 ```
 
-Never write "check that it looks right", "verify the UI works", or "test the flow".
+Scope the command to the spec file. `npm run test:e2e` runs everything, so a whole-suite count
+breaks the moment another feature adds a test. See `.claude/repo-profile.md` § Behavioral gate.
 
 ---
 
@@ -142,7 +163,7 @@ Use **only** for a rename, a file move, or an extraction with no logic change �
       `refactor(009): extract formatMoney into lib/format/money`
 ```
 
-**If the change alters any observable behavior, it is not a refactor — use the test-first template.** When in doubt, test-first.
+**If the change alters any observable behavior, it is not a refactor — use the contract template (2), or the Playwright template (2b) if a compiler cannot see the change.** When in doubt, use template 2.
 
 ---
 
@@ -154,8 +175,12 @@ Use **only** for a rename, a file move, or an extraction with no logic change �
 | Typecheck | `npx tsc --noEmit` | exit 0, no output |
 | Build (includes typecheck) | `npm run build` | exit 0, "Compiled successfully" then a route table |
 | Dev server | `npm run dev` | serves on http://localhost:3000 |
+| E2E (one spec) | `npx playwright test e2e/<spec>.spec.ts` | exit 0, `N passed` |
 
-There is **no** `npm test` in this repo. Do not write one into a plan.
+There is **no** `npm test` and no unit-test runner in this repo — do not write `jest`, `vitest`, or
+`npm test` into a plan. `npm run test:e2e` exists but runs the whole suite; scope plan steps to a
+single spec file instead. `npm run build` is **not** universal: add it only for tasks touching
+routes, config, or dependencies.
 
 Typecheck failure format, for writing `Expected:` lines:
 
