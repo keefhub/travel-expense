@@ -5,7 +5,7 @@ import type { Trip } from "@/lib/types";
 import { getTrip } from "@/lib/storage";
 import { EXPENSE_SAVED_FLAG_KEY } from "@/lib/expenses";
 import TripSetupForm from "@/components/TripSetupForm";
-import Dashboard from "@/components/Dashboard";
+import Dashboard, { DashboardSkeleton } from "@/components/Dashboard";
 
 type TripSnapshot = Trip | null | undefined;
 
@@ -76,7 +76,7 @@ export default function Home() {
   );
 
   if (trip === undefined) {
-    return null;
+    return <DashboardSkeleton />;
   }
 
   if (trip === null) {

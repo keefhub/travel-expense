@@ -92,9 +92,11 @@ export default function CategoryManager() {
                     onChange={(e) => setRenameValue(e.target.value)}
                   />
                   {renameError && <p role="alert">{renameError}</p>}
-                  <div className="flex flex-col gap-2">
-                    <button type="submit">Save</button>
-                    <button type="button" onClick={cancelRename}>
+                  <div className="flex gap-2">
+                    <button type="submit" className="btn-primary">
+                      Save
+                    </button>
+                    <button type="button" onClick={cancelRename} className="btn-text">
                       Cancel
                     </button>
                   </div>
@@ -111,13 +113,17 @@ export default function CategoryManager() {
               <span>{category.name}</span>
               {!isDefault && (
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => startRename(category.name)}>
+                  <button
+                    type="button"
+                    onClick={() => startRename(category.name)}
+                    className="btn-text"
+                  >
                     Rename
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(category.name)}
-                    className="text-[var(--danger)]"
+                    className="btn-text danger"
                   >
                     Delete
                   </button>
@@ -128,7 +134,9 @@ export default function CategoryManager() {
         })}
       </ul>
       {customCategoryCount === 0 && (
-        <p>No custom categories yet. Add one from the record-expense page.</p>
+        <p className="text-sm text-(--muted)">
+          No custom categories yet. Add one from the record-expense page.
+        </p>
       )}
     </div>
   );

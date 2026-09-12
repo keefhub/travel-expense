@@ -1,8 +1,13 @@
 import type { CategoryTotal } from "@/lib/currency";
 
+// A single-hue (accent teal, ~173°) lightness ramp, not a hue-per-segment rainbow: see
+// design.md §2 "Category chart colors" — an arbitrary hue per segment reads as extra brand
+// colors competing with the one-accent system. Category names are already in the legend text,
+// so the ramp only needs to be distinguishable, not independently identifying.
 function getCategoryColor(index: number, total: number): string {
-  const hue = Math.round((index * 360) / Math.max(total, 1));
-  return `hsl(${hue}, 60%, 50%)`;
+  const steps = Math.max(total, 1);
+  const lightness = steps === 1 ? 45 : 30 + (index * 40) / (steps - 1);
+  return `hsl(173, 55%, ${lightness}%)`;
 }
 
 export default function CategoryPieChart({

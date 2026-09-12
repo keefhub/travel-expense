@@ -70,7 +70,7 @@ function RateInput({
 
       {error && <p role="alert">{error}</p>}
       {saved && (
-        <p role="status" className="text-(--success)">
+        <p role="status" className="text-sm text-(--success-text)">
           Exchange rate saved.
         </p>
       )}
@@ -91,15 +91,15 @@ export default function ExchangeRateForm({ trip }: { trip: Trip }) {
 
   if (currencyOptions.length === 0) {
     return (
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold">Exchange rate</h2>
-        <p>No other currencies recorded yet.</p>
+        <p className="text-sm text-(--muted)">No other currencies recorded yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold">Exchange rate</h2>
 
       <div className="flex flex-col gap-1">

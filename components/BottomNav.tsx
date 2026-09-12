@@ -27,7 +27,7 @@ export default function BottomNav() {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex flex-col items-center gap-1 px-4 py-3 text-sm ${
-                  isActive ? "text-(--accent)" : "text-(--muted)"
+                  isActive ? "text-(--accent-text)" : "text-(--muted)"
                 }`}
               >
                 {item.label}

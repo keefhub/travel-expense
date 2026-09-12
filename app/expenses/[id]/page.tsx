@@ -45,25 +45,44 @@ export default function ExpenseDetailPage(props: PageProps<"/expenses/[id]">) {
 
   if (!expense) {
     return (
-      <div className="p-4 flex flex-col gap-2">
+      <div className="flex flex-col gap-4 p-4">
         <p>Expense not found.</p>
-        <Link href="/">Back to home</Link>
+        <Link href="/" className="link self-start">
+          Back to home
+        </Link>
       </div>
     );
   }
 
+  const fields: { label: string; value: string; mono?: boolean }[] = [
+    { label: "Category", value: expense.category },
+    { label: "Date", value: expense.date, mono: true },
+    { label: "Payment method", value: expense.paymentMethod },
+    { label: "Location", value: expense.location },
+    { label: "Description", value: expense.description ?? "No description entered." },
+  ];
+
   return (
-    <div className="p-4 flex flex-col gap-2">
-      <h1 className="text-xl font-semibold">Expense details</h1>
-      <p className="font-mono">
-        {expense.currency} {expense.amount.toFixed(2)}
-      </p>
-      <p>Category: {expense.category}</p>
-      <p className="font-mono">Date: {expense.date}</p>
-      <p>Payment method: {expense.paymentMethod}</p>
-      <p>Location: {expense.location}</p>
-      <p>Description: {expense.description ?? "No description entered."}</p>
-      <Link href="/">Back to home</Link>
+    <div className="flex flex-col gap-6 p-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold">Expense details</h1>
+        <p className="font-mono text-2xl font-semibold">
+          {expense.currency} {expense.amount.toFixed(2)}
+        </p>
+      </div>
+      <ul className="flex flex-col divide-y divide-(--border)">
+        {fields.map((field) => (
+          <li key={field.label} className="flex justify-between gap-4 py-2">
+            <span className="shrink-0 text-sm text-(--muted)">{field.label}</span>
+            <span className={`min-w-0 text-right break-words ${field.mono ? "font-mono" : ""}`}>
+              {field.value}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <Link href="/" className="link self-start">
+        Back to home
+      </Link>
     </div>
   );
 }

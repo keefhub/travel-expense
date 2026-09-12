@@ -86,16 +86,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold p-4">Settings</h1>
-      <div className="px-4">
-        <ThemeToggle />
-      </div>
-      <p className="px-4 font-mono text-sm text-[var(--muted)]">Trip currency: {trip.currency}</p>
+    <div className="flex flex-col gap-6 p-4">
+      <h1 className="text-xl font-semibold">Settings</h1>
+      <ThemeToggle />
+      <p className="font-mono text-sm text-(--muted)">Trip currency: {trip.currency}</p>
       <ExchangeRateForm trip={trip} />
-      <div className="p-4 flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <button
           type="button"
+          className="btn-secondary"
           onClick={() => {
             const expenses = getExpenses();
             if (expenses.length === 0) {
@@ -108,10 +107,10 @@ export default function SettingsPage() {
         >
           Export expenses
         </button>
-        {exportMessage && <p role="status">{exportMessage}</p>}
+        {exportMessage && <p role="status" className="text-sm text-(--muted)">{exportMessage}</p>}
       </div>
-      <div className="p-4">
-        <button type="button" onClick={() => setConfirmingReset(true)}>
+      <div>
+        <button type="button" onClick={() => setConfirmingReset(true)} className="btn-text danger">
           Reset app data
         </button>
       </div>

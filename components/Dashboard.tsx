@@ -12,6 +12,29 @@ import {
 } from "@/lib/currency";
 import { getRecentExpenses } from "@/lib/expenses";
 import CategoryPieChart from "@/components/CategoryPieChart";
+import Skeleton from "@/components/Skeleton";
+
+/** Shaped like the real dashboard, so the entry point never paints blank on a cold load. */
+export function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 p-4">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      <div className="flex flex-col gap-2 rounded-lg border border-(--border) bg-(--surface) p-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-8 w-40" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard({
   trip,
@@ -36,31 +59,40 @@ export default function Dashboard({
   const recentExpenses = getRecentExpenses(expenses);
 
   return (
-    <div className="p-4">
-      {showSavedMessage && <p role="status">Expense saved.</p>}
-      <h1 className="text-xl font-semibold">Home</h1>
-      <p>
-        Trip to {trip.destinationCountry} ({trip.startDate} to {trip.endDate},{" "}
-        {durationDays} {durationDays === 1 ? "day" : "days"})
-      </p>
-      <Link href="/trip/edit">Edit trip</Link>
+    <div className="flex flex-col gap-6 p-4">
+      {showSavedMessage && (
+        <p role="status" className="text-sm text-(--success-text)">
+          Expense saved.
+        </p>
+      )}
 
-      <div className="flex flex-col gap-1 pt-4">
-        <h2 className="text-xl font-semibold">Total spending</h2>
-        <p className="font-mono">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold">Home</h1>
+        <p className="text-sm text-(--muted)">
+          Trip to {trip.destinationCountry} ({trip.startDate} to {trip.endDate},{" "}
+          {durationDays} {durationDays === 1 ? "day" : "days"})
+        </p>
+        <Link href="/trip/edit" className="link text-sm self-start">
+          Edit trip
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-lg border border-(--border) bg-(--surface) p-4">
+        <h2 className="text-sm font-medium text-(--muted)">Total spending</h2>
+        <p className="font-mono text-2xl font-semibold">
           {trip.currency} {convertedTotals.convertedTotal.toFixed(2)}
         </p>
         {currencyTotals.length > 0 && (
-          <ul className="flex flex-col divide-y divide-(--border)">
+          <ul className="flex flex-col divide-y divide-(--border) text-sm">
             {currencyTotals.map((total) => (
-              <li key={total.currency} className="font-mono py-1">
+              <li key={total.currency} className="font-mono py-1 text-(--muted)">
                 {total.currency} {total.amount.toFixed(2)}
               </li>
             ))}
           </ul>
         )}
         {!convertedTotals.isComplete && (
-          <p role="status">
+          <p role="status" className="text-sm text-(--warning-text)">
             Converted total is incomplete. Missing a rate for{" "}
             {convertedTotals.missingCurrencies.join(", ")}.
           </p>
@@ -68,7 +100,7 @@ export default function Dashboard({
       </div>
 
       {trip.budget !== undefined && (
-        <div className="flex flex-col gap-1 pt-4">
+        <div className="flex flex-col gap-1">
           <h2 className="text-xl font-semibold">Budget</h2>
           <p className="font-mono">
             Budget: {trip.currency} {trip.budget.toFixed(2)}
@@ -84,16 +116,18 @@ export default function Dashboard({
       )}
 
       {categoryTotals.length > 0 && (
-        <div className="flex flex-col gap-1 pt-4">
+        <div className="flex flex-col gap-1">
           <h2 className="text-xl font-semibold">Spending by category</h2>
           <CategoryPieChart categoryTotals={categoryTotals} />
         </div>
       )}
 
-      <div className="flex flex-col gap-1 pt-4">
+      <div className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold">Recent transactions</h2>
         {recentExpenses.length === 0 ? (
-          <p>No expenses recorded yet.</p>
+          <p className="text-sm text-(--muted)">
+            No expenses recorded yet. Add one from the Add Expense tab.
+          </p>
         ) : (
           <ul className="flex flex-col divide-y divide-(--border)">
             {recentExpenses.map((expense) => (

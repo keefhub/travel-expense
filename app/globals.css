@@ -18,10 +18,16 @@
   --muted: light-dark(#71717a, #a1a1aa);
   --border: light-dark(#e4e4e7, #27272a);
   --accent: light-dark(#0d9488, #2dd4bf);
+  /* Text-only variant: --accent fails 4.5:1 as small light-mode text (it's tuned for 3:1
+     large-scale fills/borders instead). Use this for links, active-nav labels, and any other
+     colored running text; keep --accent for backgrounds, borders, and focus rings. */
+  --accent-text: light-dark(#0f766e, #2dd4bf);
   --accent-foreground: light-dark(#ffffff, #0a0a0a);
   --danger: light-dark(#dc2626, #f87171);
   --warning: light-dark(#d97706, #fbbf24);
+  --warning-text: light-dark(#b45309, #fbbf24);
   --success: light-dark(#16a34a, #4ade80);
+  --success-text: light-dark(#15803d, #4ade80);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -41,10 +47,13 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
   --color-accent-foreground: var(--accent-foreground);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
+  --color-warning-text: var(--warning-text);
   --color-success: var(--success);
+  --color-success-text: var(--success-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -141,5 +150,36 @@
 
   .btn-danger:active {
     transform: scale(0.98);
+  }
+
+  /* Plain-text secondary action (rename, cancel-inline, delete-inline): no fill or border, just
+     colored text with an underline that appears on hover/focus so the control still reads as
+     interactive without competing visually with .btn-primary/.btn-secondary. */
+  .btn-text {
+    min-height: 2.75rem;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    text-underline-offset: 3px;
+    transition: color 150ms;
+  }
+
+  .btn-text:hover,
+  .btn-text:focus-visible {
+    text-decoration: underline;
+  }
+
+  .btn-text.danger {
+    color: var(--danger);
+  }
+
+  /* Inline navigational text link (e.g. "Edit trip", "Back to home"). --accent-text, not --accent:
+     see the note on that token above. */
+  .link {
+    color: var(--accent-text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 150ms;
   }
 }

@@ -52,8 +52,10 @@ export default function AddCategoryModal({
           {error && <p role="alert">{error}</p>}
         </div>
         <div className="flex flex-col gap-2">
-          <button type="submit">Add</button>
-          <button type="button" onClick={onCancel}>
+          <button type="submit" className="btn-primary">
+            Add
+          </button>
+          <button type="button" onClick={onCancel} className="btn-secondary">
             Cancel
           </button>
         </div>

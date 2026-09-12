@@ -13,10 +13,10 @@ export default function ResetAppDataConfirm({
         rates. This cannot be undone.
       </p>
       <div className="flex flex-col gap-2">
-        <button type="button" onClick={onConfirm} className="text-[var(--danger)]">
+        <button type="button" onClick={onConfirm} className="btn-danger">
           Delete all app data
         </button>
-        <button type="button" onClick={onCancel}>
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
       </div>

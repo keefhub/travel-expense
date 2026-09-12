@@ -170,7 +170,9 @@ export default function ExpenseForm({ trip }: { trip: Trip }) {
 
         {saveError && <p role="alert">{saveError}</p>}
 
-        <button type="submit">Save expense</button>
+        <button type="submit" className="btn-primary">
+          Save expense
+        </button>
       </form>
 
       {showAddCategory && (
