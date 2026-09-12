@@ -89,3 +89,19 @@ charts, responsive layout) — there's no manual QA checklist and no unit-test r
 
 The full mechanics of this loop — implementation order, cost-optimization rules, and escalation
 handling — live in [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md).
+
+### Porting this workflow to another repo
+
+[`scripts/scaffold-ai-workflow.sh`](scripts/scaffold-ai-workflow.sh) copies the skills and
+workflow docs above into another repo without overwriting anything already there.
+
+```bash
+# from a local checkout, scaffold directly into another repo
+bash scripts/scaffold-ai-workflow.sh /path/to/other-repo
+
+# or standalone, with no local checkout of this repo
+curl -o scaffold-ai-workflow.sh https://raw.githubusercontent.com/keefhub/travel-expense/master/scripts/scaffold-ai-workflow.sh
+chmod +x scaffold-ai-workflow.sh && ./scaffold-ai-workflow.sh .
+```
+
+Add `--dry-run` to preview first. Details: [`scripts/ai-workflow-template/README.md`](scripts/ai-workflow-template/README.md).
