@@ -22,7 +22,10 @@ export const PAYMENT_METHODS: readonly string[] = [
 
 export const EXPENSE_SAVED_FLAG_KEY = "travel-expense:expense-saved";
 
-export function getInitialExpenseFormValues(trip: Trip, today: string): ExpenseFormValues {
+export function getInitialExpenseFormValues(
+  trip: Trip,
+  today: string,
+): ExpenseFormValues {
   return {
     amount: "",
     currency: trip.currency,
@@ -42,7 +45,7 @@ export interface ExpenseValidationResult {
 export function validateExpenseForm(
   values: ExpenseFormValues,
   trip: { startDate: string; endDate: string },
-  categoryNames: string[]
+  categoryNames: string[],
 ): ExpenseValidationResult {
   const errors: ExpenseValidationResult["errors"] = {};
   const warnings: ExpenseValidationResult["warnings"] = {};
@@ -95,7 +98,7 @@ export function submitExpense(
     getExpenses: () => Expense[];
     saveExpenses: (expenses: Expense[]) => SaveResult;
     generateId: () => string;
-  }
+  },
 ): SubmitExpenseResult {
   const { errors } = validateExpenseForm(values, trip, categoryNames);
   if (Object.keys(errors).length > 0) {
@@ -128,7 +131,9 @@ export const EXPENSE_BATCH_SIZE = 10;
 
 export function getRecentExpenses(
   expenses: Expense[],
-  limit: number = RECENT_EXPENSE_LIMIT
+  limit: number = RECENT_EXPENSE_LIMIT,
 ): Expense[] {
-  return [...expenses].sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit);
+  return [...expenses]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit);
 }

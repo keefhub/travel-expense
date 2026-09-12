@@ -6,13 +6,14 @@ the dashboard's recent-transactions list beyond the original five-item ceiling, 
 the approved design at `docs/superpowers/specs/2026-09-12-dashboard-show-more-transactions-design.md`.
 This was a one-off enhancement request, not the next numbered feature in `features/`; the source
 feature file, `features/009.home-dashboard.md`, is amended by Task 9 to document it.
+
 > Note for whoever runs the final task: the **Completion Summary** below documents the original
 > six-task scope only (2026-09-11). When Task 9 lands, update that same section in place — add a
 > dated addendum covering Tasks 7–9 rather than appending a second "## Completion Summary" heading.
-**Source:** `doc/spec/009.home-dashboard.md` (Tasks 1–6); `docs/superpowers/specs/2026-09-12-dashboard-show-more-transactions-design.md` (Tasks 7–9)
-**Goal:** Replace `app/page.tsx`'s placeholder with the real home dashboard: trip summary, always-
-visible total spend, budget/remaining (unchanged from feature 008), a hand-rolled category pie
-chart, and the last five transactions with tap-through to a view-only detail page.
+> **Source:** `doc/spec/009.home-dashboard.md` (Tasks 1–6); `docs/superpowers/specs/2026-09-12-dashboard-show-more-transactions-design.md` (Tasks 7–9)
+> **Goal:** Replace `app/page.tsx`'s placeholder with the real home dashboard: trip summary, always-
+> visible total spend, budget/remaining (unchanged from feature 008), a hand-rolled category pie
+> chart, and the last five transactions with tap-through to a view-only detail page.
 
 **Architecture:**
 Two small pure additions land in existing domain modules — `getCategoryTotals` in `lib/currency.ts`
@@ -31,6 +32,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 `test` script; `node_modules/.bin` contains only `eslint`, `next`, `tsc`).
 
 **Negative constraints (from `doc/spec/009.home-dashboard.md` §1.6, §2.5, §2.4):**
+
 - Will NOT add a chart library — the pie chart is CSS `conic-gradient` plus a text legend, zero new
   dependencies, per REFERENCE.md §2's explicit instruction not to silently add one.
 - Will NOT change how a trip, expense, exchange rate, or budget is entered or validated — this
@@ -48,6 +50,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
   unchanged, just relocated into `Dashboard.tsx`.
 
 **Assumptions:**
+
 - Assumed: the category pie chart's slice colors come from a deterministic `hsl(hue, 60%, 50%)`
   rotation, not `design.md`'s single-accent-color rule — that rule governs UI chrome (buttons, nav,
   links), not categorical data visualization, and a fixed small palette would break once a user's
@@ -63,6 +66,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
   typecheck step will surface a concrete, diagnosable mismatch rather than fail silently.
 
 **Negative constraints (Tasks 7–9, from the 2026-09-12 design doc):**
+
 - Will NOT add a new route or page for a full expense history — the list expands in place on the
   existing dashboard, per the approved design's decision.
 - Will NOT change how the single-expense detail page (`app/expenses/[id]/page.tsx`) works.
@@ -75,6 +79,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
   unchanged; Task 9 only adds a new scenario.
 
 **Assumptions (Tasks 7–9):**
+
 - Assumed: a batch size of 10 (`EXPENSE_BATCH_SIZE`) and a "Show less" control that resets fully to
   5 rather than decrementing by one batch — both confirmed directly with the user during
   brainstorming (see the design doc's "Decision"/"Behavior" sections).
@@ -86,6 +91,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 1: [Domain] — getCategoryTotals groups expense amounts by category in the trip currency
 
 **Files**
+
 - modify: `lib/currency.ts`
 - modify: `REFERENCE.md` (refresh the `lib/currency.ts` file-tree entry to mention
   `getCategoryTotals`)
@@ -194,6 +200,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 2: [Domain] — getRecentExpenses returns the newest expenses, newest first
 
 **Files**
+
 - modify: `lib/expenses.ts`
 - modify: `REFERENCE.md` (refresh the `lib/expenses.ts` file-tree entry to mention
   `getRecentExpenses`)
@@ -256,6 +263,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 3: [UI] — CategoryPieChart renders a hand-rolled conic-gradient chart with a legend
 
 **Files**
+
 - create: `components/CategoryPieChart.tsx`
 - modify: `REFERENCE.md` (add a `components/CategoryPieChart.tsx` entry to the file tree)
 - create (temporary, deleted within this task): `components/CategoryPieChart.probe.tsx`
@@ -277,7 +285,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       `"CategoryPieChart"` is 16 characters, so `14 + 16 = 30`.)
 
 - [x] **Step 3 — Implement the component.** Create `components/CategoryPieChart.tsx`. No `'use
-      client'` directive — this component has no hooks or event handlers, matching
+    client'` directive — this component has no hooks or event handlers, matching
       `components/NewTripConfirm.tsx`'s precedent of a plain component when nothing client-only is
       needed:
 
@@ -373,6 +381,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 4: [UI] — Dashboard assembles the full dashboard body
 
 **Files**
+
 - create: `components/Dashboard.tsx`
 - modify: `REFERENCE.md` (add a `components/Dashboard.tsx` entry to the file tree)
 - create (temporary, deleted within this task): `components/Dashboard.probe.tsx`
@@ -549,6 +558,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 5: [Route] — app/page.tsx mounts Dashboard
 
 **Files**
+
 - modify: `app/page.tsx`
 - modify: `REFERENCE.md` (rewrite the `app/page.tsx` file-tree entry — it currently describes the
   inlined dashboard body this task removes; also drop the entries' now-stale "in progress" tags for
@@ -710,6 +720,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 6: [Route] — app/expenses/[id]/page.tsx shows a view-only transaction detail
 
 **Files**
+
 - create: `app/expenses/[id]/page.tsx`
 - modify: `REFERENCE.md` (add an `app/expenses/[id]/page.tsx` entry to the file tree)
 - test: `npx tsc --noEmit`, `npm run lint`, `npm run build`, manual browser check via `npm run dev`
@@ -815,17 +826,16 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       (`○` static shell vs. `ƒ` dynamic) isn't asserted here — confirm the row for `/expenses/[id]`
       is present, whatever its marker, and note the actual output in `log.txt` rather than treating
       an unexpected-but-present marker as a failure:
-      ```
-      Route (app)
-      ┌ ○ /
-      ├ ○ /_not-found
-      ├ ○ /categories
-      ├   /expenses/[id]
-      ├ ○ /expenses/new
-      ├ ○ /settings
-      ├ ○ /trip/edit
-      └ ○ /trip/new
-      ```
+      `     Route (app)
+    ┌ ○ /
+    ├ ○ /_not-found
+    ├ ○ /categories
+    ├   /expenses/[id]
+    ├ ○ /expenses/new
+    ├ ○ /settings
+    ├ ○ /trip/edit
+    └ ○ /trip/new
+    `
 
 - [x] **Step 5 — Manual check: the detail view.** No browser-automation tool may be available in this
       environment — if so, state that plainly instead of asserting these passed.
@@ -863,6 +873,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 7: [Domain] — EXPENSE_BATCH_SIZE controls how many transactions "Show more" reveals per click
 
 **Files**
+
 - modify: `lib/expenses.ts`
 - modify: `REFERENCE.md` (extend the `lib/expenses.ts` file-tree entry to mention
   `EXPENSE_BATCH_SIZE`)
@@ -899,7 +910,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 - [x] **Step 5 — Update REFERENCE.md.** Read the current `lib/expenses.ts` file-tree entry in
       REFERENCE.md §4 (it ends "...defaulting to the last RECENT_EXPENSE_LIMIT (5)"). Append, in the
       same style: `; EXPENSE_BATCH_SIZE (10) — how many additional transactions a single dashboard
-      "Show more" click reveals`. Do not touch any other REFERENCE.md entry.
+    "Show more" click reveals`. Do not touch any other REFERENCE.md entry.
 
 - [x] **Step 6 — Regression run.**
       `npm run lint` → Expected: exit 0, no output.
@@ -915,6 +926,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 8: [UI] — Dashboard reveals more recent transactions in batches, with a collapse control
 
 **Files**
+
 - modify: `components/Dashboard.tsx`
 - modify: `REFERENCE.md` (extend the `components/Dashboard.tsx` file-tree entry to mention the new
   controls)
@@ -926,19 +938,17 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 > `Dashboard.tsx`. Task 7 must be committed first.
 
 - [x] **Step 1 — Write the spec first.** Create `e2e/009-dashboard-show-more.spec.ts` covering two
-      cases:
-      1. With 5 or fewer expenses, neither a "Show more" nor a "Show less" button renders.
-      2. With more than `RECENT_EXPENSE_LIMIT + EXPENSE_BATCH_SIZE` expenses (use 17), the
-         dashboard initially shows exactly 5 transaction links and a visible "Show more" button
-         (no "Show less"); clicking "Show more" reveals 15 links total, and now both buttons are
-         visible; clicking "Show more" again reveals all 17 (capped at the total, since only 2
-         remained) and "Show more" disappears while "Show less" stays visible; clicking "Show
-         less" collapses back to exactly 5 links and "Show more" reappears while "Show less"
-         disappears. Then, to verify the design doc's "`visibleCount` is component-local state —
-         it resets to 5 on navigation away and back (no persistence)" requirement: click "Show
-         more" once more (now 15 links), navigate to another route via BottomNav (e.g. click the
-         "Settings" link) and back via the "Home" link, and assert exactly 5 links show again with
-         no "Show less" button — proving the expansion did not survive the navigation/remount.
+      cases: 1. With 5 or fewer expenses, neither a "Show more" nor a "Show less" button renders. 2. With more than `RECENT_EXPENSE_LIMIT + EXPENSE_BATCH_SIZE` expenses (use 17), the
+      dashboard initially shows exactly 5 transaction links and a visible "Show more" button
+      (no "Show less"); clicking "Show more" reveals 15 links total, and now both buttons are
+      visible; clicking "Show more" again reveals all 17 (capped at the total, since only 2
+      remained) and "Show more" disappears while "Show less" stays visible; clicking "Show
+      less" collapses back to exactly 5 links and "Show more" reappears while "Show less"
+      disappears. Then, to verify the design doc's "`visibleCount` is component-local state —
+      it resets to 5 on navigation away and back (no persistence)" requirement: click "Show
+      more" once more (now 15 links), navigate to another route via BottomNav (e.g. click the
+      "Settings" link) and back via the "Home" link, and assert exactly 5 links show again with
+      no "Show less" button — proving the expansion did not survive the navigation/remount.
 
       Seed `localStorage` via `page.addInitScript` **before** first render (the storage keys are
       `travel-expense:trip` and `travel-expense:expenses`, per REFERENCE.md §6) — every route
@@ -997,7 +1007,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       entry in REFERENCE.md §4 (it currently ends "...absorbs everything previously inlined in
       app/page.tsx; mounted by app/page.tsx"). Insert, before that final clause, in the same style:
       `, plus "Show more"/"Show less" controls (009) that expand the list in batches of
-      EXPENSE_BATCH_SIZE (10) up to all expenses and collapse it back to RECENT_EXPENSE_LIMIT (5)`.
+    EXPENSE_BATCH_SIZE (10) up to all expenses and collapse it back to RECENT_EXPENSE_LIMIT (5)`.
       Do not touch any other REFERENCE.md entry.
 
 - [x] **Step 7 — Commit.**
@@ -1009,6 +1019,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 ### Task 9: [Docs] — document the expand/collapse behavior in the feature spec
 
 **Files**
+
 - modify: `features/009.home-dashboard.md`
 - test: `git diff features/009.home-dashboard.md`
 
@@ -1073,6 +1084,7 @@ Never commit on a failing lint, typecheck, or build.
 ## Completion Summary
 
 **What was built:**
+
 - `lib/currency.ts`: `getCategoryTotals` (groups expense amounts by category, converted to the
   trip currency, mirroring `getConvertedTotals`'s missing-rate exclusion). Commit `4cda5e1`.
 - `lib/expenses.ts`: `getRecentExpenses`/`RECENT_EXPENSE_LIMIT` (newest-first, default last 5).
@@ -1088,6 +1100,7 @@ Never commit on a failing lint, typecheck, or build.
   Commit `e2ce609`.
 
 **Deviations from the plan:**
+
 - Task 3: the plan's literal cumulative-percent code (a `let` reassigned inside `.map()`) failed
   this repo's `react-hooks/immutability` ESLint rule. Rewritten as a `reduce`-based local
   accumulator with identical external behavior; the plan's own code block was updated in place to
@@ -1105,6 +1118,7 @@ Never commit on a failing lint, typecheck, or build.
   commit isolated only this plan's own hunks via `git add -p`, verified line-by-line before staging.
 
 **Follow-ups not in scope:**
+
 - **RESIDUAL GAP** (flagged in `log.txt` for Tasks 5 and 6): no browser-automation tool exists in
   this environment, so every Step 5 manual browser check across both route tasks — the zero-expense
   dashboard, total spending and category chart with real expenses, the five-item recent-transactions
@@ -1121,6 +1135,7 @@ Never commit on a failing lint, typecheck, or build.
   to screen readers.
 
 **Final verification (all six tasks, cumulative):**
+
 - `npx tsc --noEmit`: exit 0, no output.
 - `npm run lint`: exit 0, no output.
 - `npm run build`: exit 0, 8-route table (`/`, `/_not-found`, `/categories`, `/expenses/[id]`,
@@ -1131,6 +1146,7 @@ Never commit on a failing lint, typecheck, or build.
 ## Completion Addendum — Tasks 7–9 (2026-09-12)
 
 **What was built:**
+
 - `lib/expenses.ts`: `EXPENSE_BATCH_SIZE` (10) — how many additional transactions a single
   dashboard "Show more" click reveals, added alongside the existing `RECENT_EXPENSE_LIMIT`.
   Commit `cd64663`.
@@ -1145,6 +1161,7 @@ Never commit on a failing lint, typecheck, or build.
   list" scenario; no existing scenario changed. Commit `02d7371`.
 
 **Deviations from the plan (Tasks 7–9):**
+
 - Task 7: `npx tsc --noEmit` reports a single missing export at exit code 1 in this repo (TS2305
   message text matched the plan's prediction exactly; only the exit code differed from the
   predicted "exit 2").
@@ -1156,6 +1173,7 @@ Never commit on a failing lint, typecheck, or build.
   one-new-scenario, no-existing-line-changed requirement was met exactly.
 
 **Final verification (Tasks 7–9, cumulative):**
+
 - `npx tsc --noEmit`: exit 0, no output.
 - `npm run lint`: exit 0, no output.
 - `npx playwright test e2e/009-dashboard-show-more.spec.ts`: 2 passed.

@@ -11,7 +11,11 @@ import {
   getRemainingBudget,
   getCategoryTotals,
 } from "@/lib/currency";
-import { getRecentExpenses, RECENT_EXPENSE_LIMIT, EXPENSE_BATCH_SIZE } from "@/lib/expenses";
+import {
+  getRecentExpenses,
+  RECENT_EXPENSE_LIMIT,
+  EXPENSE_BATCH_SIZE,
+} from "@/lib/expenses";
 import CategoryPieChart from "@/components/CategoryPieChart";
 import Skeleton from "@/components/Skeleton";
 
@@ -53,10 +57,20 @@ export default function Dashboard({
   const expenses = getExpenses();
   const rates = getExchangeRates();
   const currencyTotals = getExpenseTotalsByCurrency(expenses);
-  const convertedTotals = getConvertedTotals(currencyTotals, trip.currency, rates);
+  const convertedTotals = getConvertedTotals(
+    currencyTotals,
+    trip.currency,
+    rates,
+  );
   const remainingBudget =
-    trip.budget !== undefined ? getRemainingBudget(trip.budget, convertedTotals) : null;
-  const categoryTotals = getCategoryTotals(expenses, trip.currency, rates).categoryTotals;
+    trip.budget !== undefined
+      ? getRemainingBudget(trip.budget, convertedTotals)
+      : null;
+  const categoryTotals = getCategoryTotals(
+    expenses,
+    trip.currency,
+    rates,
+  ).categoryTotals;
   const [visibleCount, setVisibleCount] = useState(RECENT_EXPENSE_LIMIT);
   const recentExpenses = getRecentExpenses(expenses, visibleCount);
 
@@ -87,7 +101,10 @@ export default function Dashboard({
         {currencyTotals.length > 0 && (
           <ul className="flex flex-col divide-y divide-(--border) text-sm">
             {currencyTotals.map((total) => (
-              <li key={total.currency} className="font-mono py-1 text-(--muted)">
+              <li
+                key={total.currency}
+                className="font-mono py-1 text-(--muted)"
+              >
                 {total.currency} {total.amount.toFixed(2)}
               </li>
             ))}
@@ -108,11 +125,15 @@ export default function Dashboard({
             Budget: {trip.currency} {trip.budget.toFixed(2)}
           </p>
           {remainingBudget !== null ? (
-            <p className={`font-mono ${remainingBudget < 0 ? "text-(--danger)" : ""}`}>
+            <p
+              className={`font-mono ${remainingBudget < 0 ? "text-(--danger)" : ""}`}
+            >
               Remaining: {trip.currency} {remainingBudget.toFixed(2)}
             </p>
           ) : (
-            <p role="status">Remaining budget cannot be fully calculated yet.</p>
+            <p role="status">
+              Remaining budget cannot be fully calculated yet.
+            </p>
           )}
         </div>
       )}
@@ -154,7 +175,9 @@ export default function Dashboard({
             type="button"
             className="btn-text"
             onClick={() =>
-              setVisibleCount(Math.min(visibleCount + EXPENSE_BATCH_SIZE, expenses.length))
+              setVisibleCount(
+                Math.min(visibleCount + EXPENSE_BATCH_SIZE, expenses.length),
+              )
             }
           >
             Show more

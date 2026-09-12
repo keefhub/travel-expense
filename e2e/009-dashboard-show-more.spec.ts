@@ -36,7 +36,7 @@ async function seed(page: Page, expenses: unknown[]) {
       window.localStorage.setItem(keys.trip, JSON.stringify(trip));
       window.localStorage.setItem(keys.expenses, JSON.stringify(exp));
     },
-    [STORAGE_KEYS, TRIP, expenses] as const
+    [STORAGE_KEYS, TRIP, expenses] as const,
   );
 }
 
@@ -46,16 +46,24 @@ const transactionLinks = (page: Page) =>
   page.locator('a[href^="/expenses/"]:not([href="/expenses/new"])');
 
 test.describe("feature 009 — show more / show less recent transactions", () => {
-  test("with 5 or fewer expenses, no Show more or Show less button renders", async ({ page }) => {
+  test("with 5 or fewer expenses, no Show more or Show less button renders", async ({
+    page,
+  }) => {
     await seed(page, makeExpenses(3));
     await page.goto("/");
 
     await expect(transactionLinks(page)).toHaveCount(3);
-    await expect(page.getByRole("button", { name: "Show more" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Show less" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Show more" })).toHaveCount(
+      0,
+    );
+    await expect(page.getByRole("button", { name: "Show less" })).toHaveCount(
+      0,
+    );
   });
 
-  test("Show more reveals in batches of 10 and Show less collapses back to 5", async ({ page }) => {
+  test("Show more reveals in batches of 10 and Show less collapses back to 5", async ({
+    page,
+  }) => {
     await seed(page, makeExpenses(17));
     await page.goto("/");
 

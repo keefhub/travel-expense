@@ -19,15 +19,15 @@ Visual/interaction rules (color, type, spacing, component states): [design.md](d
 
 ## 2. Stack (from [package.json](package.json))
 
-| Thing | Version / choice |
-|---|---|
-| Framework | Next.js **16.3.3**, App Router (`app/`) |
-| React | 19.2.8 |
-| Language | TypeScript 5, `strict: true`, `noEmit` |
-| Styling | Tailwind CSS v4 via `@tailwindcss/postcss` (no `tailwind.config.js` — config is CSS-first) |
-| Lint | ESLint 9 flat config, `eslint-config-next` (core-web-vitals + typescript) |
-| Package manager | npm (`package-lock.json`) |
-| Tests | **No unit-test runner** — no jest/vitest. `@playwright/test` **is** installed: specs in `e2e/`, run `npx playwright test e2e/<spec>.spec.ts`. Verification = `tsc` + lint always, `build` only for route/config/dependency changes, Playwright for behavior a compiler cannot see. See [.claude/repo-profile.md](.claude/repo-profile.md). |
+| Thing           | Version / choice                                                                                                                                                                                                                                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Framework       | Next.js **16.3.3**, App Router (`app/`)                                                                                                                                                                                                                                                                                                    |
+| React           | 19.2.8                                                                                                                                                                                                                                                                                                                                     |
+| Language        | TypeScript 5, `strict: true`, `noEmit`                                                                                                                                                                                                                                                                                                     |
+| Styling         | Tailwind CSS v4 via `@tailwindcss/postcss` (no `tailwind.config.js` — config is CSS-first)                                                                                                                                                                                                                                                 |
+| Lint            | ESLint 9 flat config, `eslint-config-next` (core-web-vitals + typescript)                                                                                                                                                                                                                                                                  |
+| Package manager | npm (`package-lock.json`)                                                                                                                                                                                                                                                                                                                  |
+| Tests           | **No unit-test runner** — no jest/vitest. `@playwright/test` **is** installed: specs in `e2e/`, run `npx playwright test e2e/<spec>.spec.ts`. Verification = `tsc` + lint always, `build` only for route/config/dependency changes, Playwright for behavior a compiler cannot see. See [.claude/repo-profile.md](.claude/repo-profile.md). |
 
 Runtime deps are only `next`, `react`, `react-dom`. **There is no chart library, no date library, no
 form library, no state manager, no CSV library.** Feature 009 needs a pie chart and 014 needs CSV —
@@ -120,16 +120,16 @@ an API you are unsure of. Confirmed facts for this version:
 
 Doc pointers (all under `node_modules/next/dist/docs/01-app/`):
 
-| Topic | File |
-|---|---|
-| Layouts, pages, routing | `01-getting-started/03-layouts-and-pages.md` |
-| `<Link>` / navigation | `01-getting-started/04-linking-and-navigating.md` |
-| Server vs client components | `01-getting-started/05-server-and-client-components.md` |
-| CSS / Tailwind | `01-getting-started/11-css.md` |
-| Fonts, images, metadata | `01-getting-started/13-fonts.md`, `12-images.md`, `14-metadata-and-og-images.md` |
-| Error handling | `01-getting-started/10-error-handling.md` |
-| File conventions (`page`/`layout`/`error`/`loading`/`not-found`, route groups) | `03-api-reference/03-file-conventions/` |
-| Directives (`use client`, `use server`, `use cache`) | `03-api-reference/01-directives/` |
+| Topic                                                                          | File                                                                             |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Layouts, pages, routing                                                        | `01-getting-started/03-layouts-and-pages.md`                                     |
+| `<Link>` / navigation                                                          | `01-getting-started/04-linking-and-navigating.md`                                |
+| Server vs client components                                                    | `01-getting-started/05-server-and-client-components.md`                          |
+| CSS / Tailwind                                                                 | `01-getting-started/11-css.md`                                                   |
+| Fonts, images, metadata                                                        | `01-getting-started/13-fonts.md`, `12-images.md`, `14-metadata-and-og-images.md` |
+| Error handling                                                                 | `01-getting-started/10-error-handling.md`                                        |
+| File conventions (`page`/`layout`/`error`/`loading`/`not-found`, route groups) | `03-api-reference/03-file-conventions/`                                          |
+| Directives (`use client`, `use server`, `use cache`)                           | `03-api-reference/01-directives/`                                                |
 
 > The "This is NOT the Next.js you know" block in [AGENTS.md](AGENTS.md) is **generated by `next dev`**.
 > If it reappears as an uncommitted diff, commit it with your work — deleting it just re-creates it.
