@@ -28,30 +28,35 @@ Read `PLAN-TEMPLATES.md` before drafting. Read `PLAN-MAINTENANCE.md` before writ
 
 Facts a plan written here must respect:
 
-| | |
-|---|---|
-| Stack | Next.js 16.3.3 (App Router), React 19.2.8, TypeScript 5 (`strict: true`), Tailwind CSS 4, ESLint 9 flat config |
-| Lint | `npm run lint` — exit 0, prints nothing on success |
-| Typecheck | `npx tsc --noEmit` — exit 0, prints nothing on success; exit 2 on failure |
-| Build | `npm run build` — also runs TypeScript; exit 0, prints a "Compiled successfully" line and a route table |
-| Dev server | `npm run dev` (declared in `package.json`) |
-| **Test framework** | **None is installed.** `package.json` has no `test` script, and `node_modules/.bin` contains only `eslint`, `next`, and `tsc`. Do not write plan steps that invoke `jest`, `vitest`, `playwright`, or `npm test` — they do not exist here. See *Test-first without a test runner* below. |
-| Path alias | `@/*` maps to the repo root (`tsconfig.json`) |
-| Backend | None. Data lives in browser local storage; there is no API layer, server, or database. |
+|                    |                                                                                                                                                                                                                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stack              | Next.js 16.3.3 (App Router), React 19.2.8, TypeScript 5 (`strict: true`), Tailwind CSS 4, ESLint 9 flat config                                                                                                                                                                           |
+| Lint               | `npm run lint` — exit 0, prints nothing on success                                                                                                                                                                                                                                       |
+| Typecheck          | `npx tsc --noEmit` — exit 0, prints nothing on success; exit 2 on failure                                                                                                                                                                                                                |
+| Build              | `npm run build` — also runs TypeScript; exit 0, prints a "Compiled successfully" line and a route table                                                                                                                                                                                  |
+| Dev server         | `npm run dev` (declared in `package.json`)                                                                                                                                                                                                                                               |
+| **Test framework** | **None is installed.** `package.json` has no `test` script, and `node_modules/.bin` contains only `eslint`, `next`, and `tsc`. Do not write plan steps that invoke `jest`, `vitest`, `playwright`, or `npm test` — they do not exist here. See _Test-first without a test runner_ below. |
+| Path alias         | `@/*` maps to the repo root (`tsconfig.json`)                                                                                                                                                                                                                                            |
+| Backend            | None. Data lives in browser local storage; there is no API layer, server, or database.                                                                                                                                                                                                   |
+
+> **Context packet:** the facts in this table, the layer boundaries below, and the design/domain
+> facts from `REFERENCE.md`/`OVERVIEW.md`/`design.md` are also distilled in the repo context packet
+> at `/memories/repo/travel-expense-context.md`. Read that packet instead of re-reading the raw
+> files; re-read the raw files only when a task modifies them.
 
 ### Layers (task boundaries)
 
 Only `app/` exists today; the rest are created as features land. These are the boundaries a plan splits tasks along:
 
-| Layer | Path | Holds |
-|---|---|---|
-| Types | `lib/types.ts` | Shared domain types |
-| Data | `lib/storage/**` | Local-storage read/write, key naming, serialization, error surfacing |
-| Domain | `lib/<domain>/*.ts` | Pure functions — validation, mapping, formatting. No DOM, no storage, no clock |
-| UI | `components/**/*.tsx` | Presentational React components |
-| Route | `app/**/page.tsx` | App Router entries, client components where they touch storage |
+| Layer  | Path                  | Holds                                                                          |
+| ------ | --------------------- | ------------------------------------------------------------------------------ |
+| Types  | `lib/types.ts`        | Shared domain types                                                            |
+| Data   | `lib/storage/**`      | Local-storage read/write, key naming, serialization, error surfacing           |
+| Domain | `lib/<domain>/*.ts`   | Pure functions — validation, mapping, formatting. No DOM, no storage, no clock |
+| UI     | `components/**/*.tsx` | Presentational React components                                                |
+| Route  | `app/**/page.tsx`     | App Router entries, client components where they touch storage                 |
 
-**Data, domain, and UI/route changes are always separate tasks.** Never one task that adds a storage call *and* the form that uses it.
+**Data, domain, and UI/route changes are always separate tasks.** Never one task that adds a storage call _and_ the form that uses it.
 
 Next.js 16 differs from older training data. When a task depends on an App Router API you are not certain of, add a step that reads the relevant file under `node_modules/next/dist/docs/` and cite it in the plan.
 
@@ -113,6 +118,7 @@ Rules:
 
 ```markdown
 **Files**
+
 - create: `lib/expenses/validateExpense.ts`
 - modify: `lib/types.ts`
 - test: `npx tsc --noEmit`, `npm run lint`
@@ -170,9 +176,16 @@ If a test runner is ever added to `package.json`, use it and quote its real outp
 
 For **mechanical, behavior-preserving changes only** — a rename, a file move, an extraction with no logic change. It replaces the red step with a build verification: apply change → `npm run lint && npx tsc --noEmit && npm run build` → commit. The full template is in `<skill-root>/references/PLAN-TEMPLATES.md`.
 
-**When in doubt, use test-first.** If the change alters *any* observable behavior, it is not a refactor.
+**When in doubt, use test-first.** If the change alters _any_ observable behavior, it is not a refactor.
 
 ## Step 4 — Review
+
+Pass A (self-review) runs first, in-session. Passes A.5, B (when applicable), and C are then
+**dispatched in parallel in the same message** — three fresh subagents, each receiving the frozen
+draft plan and the requirements source, none seeing the others' output. When all three return,
+reconcile their findings into the plan before Step 5. Parallel dispatch costs the same tokens as
+sequential but roughly a third of the wall-clock; never stagger the dispatch (a pass that sees
+another's output is anchored by it and silently merges the reviews).
 
 ### Pass A — Self-review
 
@@ -229,6 +242,7 @@ Dispatch a **general-purpose subagent** with the draft plan and a one-sentence s
 > or storage contract that will need changing again immediately.
 >
 > Flag every finding as exactly one of:
+>
 > - **Blocking** — the plan will produce wrong or unbuildable results as written.
 > - **Advisory** — a preference or an improvement that is not required.
 >
@@ -318,7 +332,7 @@ Triggered by "amend the plan", "add to the plan", "update the plan", "the requir
 entry, after the requirement to allow non-trip currencies was confirmed.
 ```
 
-State what changed *and why*.
+State what changed _and why_.
 
 5. **Note any interaction** where a new task changes something an earlier task set up, inline in the new task:
 
@@ -335,19 +349,19 @@ State what changed *and why*.
 
 **Verified 2026-08-31** against this repository. Every claim above about this repo was checked by running one of these commands. Re-run them when something here stops matching reality.
 
-| Claim | Verification command | Observed |
-|---|---|---|
-| Stack and versions | `cat package.json` | next 16.3.3, react 19.2.8, typescript ^5, tailwindcss ^4, eslint ^9 |
-| Lint command | `npm run lint` | exit 0, no output |
-| Typecheck command | `npx tsc --noEmit` | exit 0, no output |
-| Typecheck failure format | `npx tsc --noEmit` against a file importing a missing module, then a missing export | exit 2; `lib/__probe/probe.ts(1,31): error TS2307: Cannot find module '@/lib/__probe/missing' or its corresponding type declarations.` and `lib/__probe/probe.ts(1,10): error TS2305: Module '"@/lib/__probe/mod"' has no exported member 'parseInterval'.` (probe files removed after checking) |
-| Build command | `npm run build` | exit 0, "Compiled successfully" then a route table (`/`, `/_not-found`) |
-| No test runner | `cat package.json` (no `test` script); `ls node_modules/.bin` | only `eslint`, `next`, `tsc` — no jest, vitest, playwright, mocha, cypress |
-| Strict TypeScript, `@/*` alias | `cat tsconfig.json` | `"strict": true`, `"paths": {"@/*": ["./*"]}` |
-| ESLint 9 flat config | `cat eslint.config.mjs` | `defineConfig([...nextVitals, ...nextTs, ...])` |
-| Existing source layout | `find app -type f` | only `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `app/favicon.ico` |
-| Layer names (`lib/types.ts`, `lib/storage`, `lib/<domain>`, `components/`, `app/`) | `grep -rn 'lib/\|components/' doc/spec/ features/` | the §2.4 module map in `doc/spec/005.record-expense.md` used exactly these paths. Note: `doc/spec/` is regenerated per feature and was empty again at the time of writing — re-derive from whatever spec documents exist when you re-check. |
-| No backend | `sed -n '1,20p' features/OVERVIEW.md` | "stores all data in browser local storage. It does not use a backend service, SQL database, or external database." |
-| Next.js docs location | `ls node_modules/next/dist/docs/` | `01-app`, `02-pages`, `03-architecture`, `04-community`, `index.md` |
-| `doc/plans/` numbering starts at 001 | `ls -d doc/plans/[0-9][0-9][0-9]-*` | `No such file or directory` — `doc/plans/` does not exist |
-| Commit convention | `git log --oneline` | **only one commit** (`d9e2702 Initial commit from Create Next App`) — no convention is derivable from history. The Conventional Commits format above is the convention this repo documents for itself in `CLAUDE.md`'s feature loop; treat it as documented, not observed, and re-check it once real commits exist. |
+| Claim                                                                              | Verification command                                                                | Observed                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stack and versions                                                                 | `cat package.json`                                                                  | next 16.3.3, react 19.2.8, typescript ^5, tailwindcss ^4, eslint ^9                                                                                                                                                                                                                                                 |
+| Lint command                                                                       | `npm run lint`                                                                      | exit 0, no output                                                                                                                                                                                                                                                                                                   |
+| Typecheck command                                                                  | `npx tsc --noEmit`                                                                  | exit 0, no output                                                                                                                                                                                                                                                                                                   |
+| Typecheck failure format                                                           | `npx tsc --noEmit` against a file importing a missing module, then a missing export | exit 2; `lib/__probe/probe.ts(1,31): error TS2307: Cannot find module '@/lib/__probe/missing' or its corresponding type declarations.` and `lib/__probe/probe.ts(1,10): error TS2305: Module '"@/lib/__probe/mod"' has no exported member 'parseInterval'.` (probe files removed after checking)                    |
+| Build command                                                                      | `npm run build`                                                                     | exit 0, "Compiled successfully" then a route table (`/`, `/_not-found`)                                                                                                                                                                                                                                             |
+| No test runner                                                                     | `cat package.json` (no `test` script); `ls node_modules/.bin`                       | only `eslint`, `next`, `tsc` — no jest, vitest, playwright, mocha, cypress                                                                                                                                                                                                                                          |
+| Strict TypeScript, `@/*` alias                                                     | `cat tsconfig.json`                                                                 | `"strict": true`, `"paths": {"@/*": ["./*"]}`                                                                                                                                                                                                                                                                       |
+| ESLint 9 flat config                                                               | `cat eslint.config.mjs`                                                             | `defineConfig([...nextVitals, ...nextTs, ...])`                                                                                                                                                                                                                                                                     |
+| Existing source layout                                                             | `find app -type f`                                                                  | only `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `app/favicon.ico`                                                                                                                                                                                                                                         |
+| Layer names (`lib/types.ts`, `lib/storage`, `lib/<domain>`, `components/`, `app/`) | `grep -rn 'lib/\|components/' doc/spec/ features/`                                  | the §2.4 module map in `doc/spec/005.record-expense.md` used exactly these paths. Note: `doc/spec/` is regenerated per feature and was empty again at the time of writing — re-derive from whatever spec documents exist when you re-check.                                                                         |
+| No backend                                                                         | `sed -n '1,20p' features/OVERVIEW.md`                                               | "stores all data in browser local storage. It does not use a backend service, SQL database, or external database."                                                                                                                                                                                                  |
+| Next.js docs location                                                              | `ls node_modules/next/dist/docs/`                                                   | `01-app`, `02-pages`, `03-architecture`, `04-community`, `index.md`                                                                                                                                                                                                                                                 |
+| `doc/plans/` numbering starts at 001                                               | `ls -d doc/plans/[0-9][0-9][0-9]-*`                                                 | `No such file or directory` — `doc/plans/` does not exist                                                                                                                                                                                                                                                           |
+| Commit convention                                                                  | `git log --oneline`                                                                 | **only one commit** (`d9e2702 Initial commit from Create Next App`) — no convention is derivable from history. The Conventional Commits format above is the convention this repo documents for itself in `CLAUDE.md`'s feature loop; treat it as documented, not observed, and re-check it once real commits exist. |

@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Travel Expense Tracker
 
-## Getting Started
+A mobile-first, offline-capable travel expense tracker. No backend, no database, no API
+routes — all state lives in the browser's `localStorage`, so the app works offline once
+loaded. One active trip at a time; creating a new trip deletes the previous one after
+confirmation.
 
-First, run the development server:
+## Features
+
+- Trip setup with country → currency mapping and an optional budget
+- Edit the active trip or start a new one
+- Record expenses in multiple currencies
+- Manual exchange rates
+- Expense categories (defaults + custom)
+- Home dashboard with total spend, budget, and pie chart
+- Export expenses to CSV
+- Reset app data
+- Mobile-responsive navigation
+
+## Tech stack
+
+| Thing           | Choice                                        |
+| --------------- | --------------------------------------------- |
+| Framework       | [Next.js](https://nextjs.org) 16 (App Router) |
+| UI library      | React 19                                      |
+| Language        | TypeScript 5 (`strict`)                       |
+| Styling         | Tailwind CSS v4                               |
+| Linting         | ESLint 9 flat config (`eslint-config-next`)   |
+| Persistence     | Browser `localStorage` (no backend)           |
+| Package manager | npm                                           |
+
+Runtime dependencies are only `next`, `react`, and `react-dom`.
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev     # start the development server
+npm run build   # production build (also the type-check gate)
+npm run lint    # run ESLint
+npm start       # start the production server
+```
 
-## Learn More
+There is no separate `typecheck` script — `npm run build` catches type errors.
 
-To learn more about Next.js, take a look at the following resources:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/          # App Router routes
+components/   # shared UI
+lib/          # domain logic + localStorage persistence
+features/     # feature specifications (source of truth)
+doc/          # generated specs, plans, and logs
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Architecture details, domain rules, and the agent workflow are documented in
+[`REFERENCE.md`](REFERENCE.md) and [`AGENTS.md`](AGENTS.md).

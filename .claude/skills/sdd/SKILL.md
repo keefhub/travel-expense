@@ -24,7 +24,7 @@ These are non-negotiable — do not shortcut them under time pressure or when a 
 3. **Two mandatory review gates**, each a separate fresh subagent that reads the actual changed files itself (`git status`, `git diff`, then `Read` the full files) — never trusts the implementer's self-reported summary:
    - **Spec/requirements reviewer** — did it build what the task and source spec asked for; lists gaps.
    - **Code-quality reviewer** — is it correct and consistent with this codebase's own patterns; lists bugs/issues.
-   Both must return `PASS` before the task can be committed.
+     Both must return `PASS` before the task can be committed.
 4. **Persistent, file-based state**: `PROGRESS.md` (one checkbox per task) and `log.txt` (append-only, one entry per completed task) live beside `plan.md`. Update both **only after both gates pass and the commit exists** — this is what makes a run resumable after the session dies mid-plan. Do not use the in-session todo list as a substitute; it does not survive a restart.
 5. **The controller commits, never a subagent.** No implementer or reviewer subagent ever runs `git add`/`git commit`. This session stages, reviews the diff, and commits only after both gates are green.
 6. **Dispatch gate before every task** (including the first): confirm the previous task's checkbox, log entry, commit, and both gate verdicts all agree before starting the next one.
@@ -40,7 +40,11 @@ These are non-negotiable — do not shortcut them under time pressure or when a 
 3. **`PROGRESS.md`** — if `<plan-dir>/PROGRESS.md` does not exist, create it (template below) seeded with one unchecked line per task found in the plan. If it exists, read it — it is the source of truth for what's already done, not your memory of a prior session.
 4. **`log.txt`** — if `<plan-dir>/log.txt` does not exist, create an empty file. If it already exists (e.g. from prior manual execution of this same plan), leave existing entries untouched and append below them.
 5. Find the first unchecked task in `PROGRESS.md`. If none — every task is checked — skip to **Completion** below.
-6. Read [REFERENCE.md](../../../REFERENCE.md) — it is the orientation map every implementer subagent will be handed, and the file this loop keeps current as tasks land (see below).
+6. Read the repo context packet (`/memories/repo/travel-expense-context.md`) if it exists — it
+   distills `REFERENCE.md` §2/§4/§6, `OVERVIEW.md` §1–3, and `design.md` into the thin orientation
+   map every implementer subagent is handed. Re-read [REFERENCE.md](../../../REFERENCE.md) itself
+   only when a task will modify it (see below), and refresh the packet in the same change. If the
+   packet is missing or clearly stale, regenerate it from the source files.
 
 **`PROGRESS.md` template:**
 
@@ -66,12 +70,12 @@ This is **not optional busywork run at the end** — wire it into the loop that 
 
 **REFERENCE.md — update in the same task's diff when the task:**
 
-| Task does this | Update this section |
-|---|---|
-| Adds a file/directory under `app/`, `lib/`, `components/`, or otherwise changes the tree shown in §4 | §4 Current file layout |
-| Adds, removes, or upgrades a runtime dependency | §2 Stack |
-| Defines or changes a storage key, or a module's public API (the big one: feature 012, the storage layer — §6 explicitly says "record its keys and its public API here so nobody has to read the implementation to find them") | §6 Domain facts |
-| Makes any other fact in §1, §4, §5, or §6 stop matching the code (a "not yet fixed" placeholder gets fixed, a listed gotcha turns out wrong, a new Next.js 16 API surprise gets discovered) | whichever section is now wrong |
+| Task does this                                                                                                                                                                                                                | Update this section            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Adds a file/directory under `app/`, `lib/`, `components/`, or otherwise changes the tree shown in §4                                                                                                                          | §4 Current file layout         |
+| Adds, removes, or upgrades a runtime dependency                                                                                                                                                                               | §2 Stack                       |
+| Defines or changes a storage key, or a module's public API (the big one: feature 012, the storage layer — §6 explicitly says "record its keys and its public API here so nobody has to read the implementation to find them") | §6 Domain facts                |
+| Makes any other fact in §1, §4, §5, or §6 stop matching the code (a "not yet fixed" placeholder gets fixed, a listed gotcha turns out wrong, a new Next.js 16 API surprise gets discovered)                                   | whichever section is now wrong |
 
 A task that touches none of the above leaves REFERENCE.md untouched — do not add speculative or restating-the-obvious lines.
 
@@ -110,9 +114,9 @@ Architecture: {{plan.md Architecture paragraph}}
 Source: {{plan.md Source line, if present}}
 
 REPO CONVENTIONS
-{{relevant rows: lint/typecheck/build commands, layer boundaries table,
-  anything else in the plan header or REFERENCE.md a fresh implementer
-  would need and wouldn't otherwise know}}
+{{the distilled repo context packet (memories/repo/travel-expense-context.md) —
+  commands, layer boundaries, storage keys, Next.js 16 gotchas. Paste the packet,
+  not the raw REFERENCE.md/OVERVIEW.md/design.md files.}}
 
 TASK TO IMPLEMENT (verbatim from plan.md)
 {{full "### Task N: ..." section — Files manifest and every step}}
@@ -144,6 +148,11 @@ Instructions:
 If the implementer reports it could not complete a step, or a verification command's real output didn't match `Expected:`, treat this as a **failed attempt** for this task (see Escalation).
 
 ### Step 3 — Two review gates (parallel, fresh subagents)
+
+For a **thin feature** (≤2 Gherkin scenarios, no new storage key or module boundary — per
+`CLAUDE.md`'s cost-optimization rules), run **one combined gate** instead of two: dispatch a single
+fresh subagent with the Gate A brief, and append the Gate B checklist (bugs, edge cases, pattern
+consistency) to its report instruction. For all other features, run both gates as below.
 
 Dispatch **both** of the following in the **same message** (two `Agent` tool calls, `subagent_type: general-purpose`, `run_in_background: false`) so they run in parallel and you block on both before deciding.
 
@@ -196,8 +205,9 @@ separate reviewer covers that). Verify everything from the real files, not
 from a summary someone else gives you.
 
 REPO CONVENTIONS
-{{layer boundaries table, lint/typecheck/build commands, anything else in
-  REFERENCE.md relevant to this task's files}}
+{{the distilled repo context packet (memories/repo/travel-expense-context.md) —
+  layer boundaries, lint/typecheck/build commands, error-handling style,
+  anything relevant to this task's files}}
 
 TASK AS IMPLEMENTED (verbatim task text from plan.md, for context only)
 {{full "### Task N: ..." section}}
@@ -220,8 +230,8 @@ covers that. Do not edit any files.
 
 ### Step 4 — Gate decision
 
-- **Both PASS** → go to Step 5 (commit).
-- **One or both FAIL** → dispatch a fresh fix subagent (`general-purpose`, foreground) scoped to only the failing findings:
+- **Both PASS** (or the single combined gate PASSes for a thin feature) → go to Step 5 (commit).
+- **One or both FAIL** (or the combined gate FAILs) → dispatch a fresh fix subagent (`general-purpose`, foreground) scoped to only the failing findings:
 
 ```
 A reviewer found the following issues in a task you're about to fix. Fix
@@ -238,7 +248,7 @@ REVIEWER FINDINGS TO FIX
 Report back: what you changed and why, file by file.
 ```
 
-  Then re-run **only the gate(s) that failed** — a fresh subagent again, same prompt template as Step 3. **Exception:** if the fix touches files or logic that the *passing* gate already reviewed, re-run **both** gates, since the passing verdict no longer covers the current diff.
+Then re-run **only the gate(s) that failed** — a fresh subagent again, same prompt template as Step 3. **Exception:** if the fix touches files or logic that the _passing_ gate already reviewed, re-run **both** gates (for a thin feature's single combined gate, simply re-run it), since the passing verdict no longer covers the current diff.
 
 This fix-and-re-review cycle is the task's **one allowed retry**. If, after it, either gate still fails, that is the task's 2nd consecutive failure — go to **Escalation**, do not fix-and-re-review a second time.
 
@@ -247,6 +257,7 @@ This fix-and-re-review cycle is the task's **one allowed retry**. If, after it, 
 Attempt counts are tracked for the conversation, not persisted to disk (only completed tasks are persisted — see invariant 4). A "failed attempt" is either: the implementer failing to complete Step 2, or a gate still failing after Step 4's one fix-and-re-review cycle.
 
 If the **same task** produces its 2nd failed attempt in a row: **stop**. Do not dispatch a 3rd attempt. Report to the user:
+
 - The task number and title.
 - What was tried both times (implementer summary, gate findings).
 - A concrete question: retry with guidance, skip and revisit later, or take it over manually.
@@ -271,6 +282,7 @@ Once both gates show `PASS`:
    ```
 
    `<type>` is `feat`/`fix`/`refactor`/`chore` as appropriate; `<scope>` is the feature number if the plan is tied to one.
+
 4. Commit via heredoc. Never `--no-verify`, never amend, never force anything.
 5. `git log -1 --stat` to confirm the commit landed with the expected files.
 
@@ -278,7 +290,7 @@ Once both gates show `PASS`:
 
 Do all three:
 
-1. **`plan.md`** — tick this task's `- [ ]` steps to `- [x]` (and the task heading, if the plan format ticks those too). On the *first* task completed in this run, set the plan header's `**Status:**` to `In Progress` if it isn't already.
+1. **`plan.md`** — tick this task's `- [ ]` steps to `- [x]` (and the task heading, if the plan format ticks those too). On the _first_ task completed in this run, set the plan header's `**Status:**` to `In Progress` if it isn't already.
 2. **`PROGRESS.md`** — tick this task's line and append the commit hash: `- [x] Task N: ... (abc1234)`.
 3. **`log.txt`** — append an entry, append-only, using this shape (extends the `writing-plans` log format with the two gate verdicts and the commit):
 
@@ -306,6 +318,12 @@ Verification:
 Review Gate — Spec:    PASS (attempt <n>)
 Review Gate — Quality: PASS (attempt <n>)
 =====================================================================
+```
+
+For a thin feature's single combined gate, replace the two `Review Gate —` lines with one:
+
+```
+Review Gate — Combined: PASS (attempt <n>)
 ```
 
 If the plan itself turned out to be wrong (an extra file, a superseded step), strike the affected step in `plan.md` with `~~...~~` and a one-line pointer to the `log.txt` entry — do not delete it. Do not renumber tasks; `log.txt` and commit messages reference them by number.
