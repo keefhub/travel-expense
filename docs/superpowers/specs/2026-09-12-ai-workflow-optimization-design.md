@@ -29,8 +29,16 @@ Measured from `doc/spec/*` and the `log.txt` files of completed runs:
 ### Root cause behind two of these
 
 The working tree was dirty during runs (an unrelated theme refactor, untracked `doc/`). That
-single fact produced both the per-task `git add -p` isolation overhead and the Gate B
-false-positive FAIL in `010` Task 1.
+produced the per-task staging overhead recorded in `010`'s log ("isolated via `git add -p` from
+unrelated pre-existing uncommitted REFERENCE.md edits") and the Gate B false-positive FAIL in
+`010` Task 1.
+
+**Corrected 2026-09-12 after adversarial review.** An earlier version of this section implied the
+`git add -p` workaround was written into `sdd/SKILL.md` and could be deleted from it. It is not —
+`grep -c 'add -p' .claude/skills/sdd/SKILL.md` returns `0`. The skill's Step 6 already specifies
+manifest-scoped staging with a never-`git add -A` rail and an unexpected-staged check; that text
+is correct and must be left alone. The overhead was improvised by the controller at runtime in
+response to the dirty tree. Fixing the tree therefore removes it without any skill edit.
 
 ## Goals
 
@@ -58,6 +66,16 @@ theirs to judge.
 "Dirty" means tracked files with uncommitted modifications. Untracked paths that no task in the
 plan will touch (for example `doc/`) are permitted, but must still be declared, since a reviewer
 running `git status --short` will see them.
+
+**The check must run as the first item of `sdd` Step 0, before anything else in that step.**
+Step 0 itself creates `PROGRESS.md` and `log.txt` beside the plan; a precondition appended after
+those would trip on files `/sdd` had just written. These paths are permanently pre-declared and
+never count as dirty: `doc/`, `output/`, `<plan-dir>/PROGRESS.md`, `<plan-dir>/log.txt`.
+
+One more belongs in the pre-declared list for a different reason: `next dev` upserts a managed
+block into `AGENTS.md` on every start (`generate-agent-files.js`). The block currently matches, so
+the write is a no-op — but Playwright's `webServer` starts `next dev`, so after any Next.js
+upgrade the behavioral gate would dirty a tracked file mid-run.
 
 This removes the per-task `git add -p` dance and eliminates the wrong-baseline class of
 false-positive FAIL at its source.
@@ -89,9 +107,26 @@ Passes A.5, B, and C stay parallel and otherwise unchanged.
 
 ### 3. Probe steps deleted; build scoped (`writing-plans`)
 
-- Test-first probe steps are removed. With no test runner they establish only that a file does
-  not exist yet, at the cost of a file create, a full `tsc` run, an exact-string comparison
-  including a computed column number, and a delete.
+**Corrected 2026-09-12 after adversarial review.** The original version of this section called for
+deleting the compiler red step outright, on the stated grounds that it "establishes only that a
+file does not exist yet." That is wrong about this repo. The red step's primary form is:
+
+```
+error TS2305: Module '"@/lib/types"' has no exported member 'ExpenseFormValues'.
+```
+
+which asserts that a **named export with a declared shape** is missing — a contract check, not an
+existence check. Section 2 makes the exported signature the plan's entire payload, so deleting the
+only mechanical check that an implementation matches its contract, in the same change, would
+remove the natural control on exactly the failure mode Section 2 introduces.
+
+What is actually expensive is the ceremony around the check, not the check:
+
+- **Keep:** write the call site first, run `npx tsc --noEmit`, expect a quoted `TS2305`/`TS2307`
+  failure, then implement until it passes. This stays the default for any task with a consumer.
+- **Delete:** the throwaway `lib/__probe/` and `*.probe.tsx` files created only to be deleted, and
+  the computed column-number formula the plans carry for predicting the exact error column. Match
+  on the error code and message; do not predict the column.
 - `npm run build` runs only when a task touches routes, configuration, or dependencies.
   `tsc` + `lint` are the default verification pair.
 
@@ -112,8 +147,19 @@ something it previously could not verify at all.
 ### 5. Layer-sliced context (`sdd`)
 
 The 12 KB packet at `memories/repo/travel-expense-context.md` is split into a small shared core
-plus `[Data]`, `[Domain]`, `[UI]`, and `[Route]` slices of roughly 1.5 KB each. A dispatch
-receives the core plus its own task's layer slice.
+plus `[Types]`, `[Data]`, `[Domain]`, `[UI]`, and `[Route]` slices of roughly 1.5 KB each. A
+dispatch receives the core plus its own task's layer slice.
+
+Two constraints the split must satisfy, both found in review:
+
+- **All five layers get a slice.** `writing-plans` defines the chain as Types → Data → Domain →
+  UI → Route. A `[Types]` task with no slice would make the rule unsatisfiable on its first use.
+- **A plan may use adapted layer tags** (`/sdd` permits this, and the plan implementing *this*
+  design uses `[Tooling]`, `[Config]`, `[Skill]`, `[Docs]`). The rule is therefore: paste the
+  slice matching the tag, and where no slice matches, paste the core alone. Never guess a slice.
+
+The core must be capped, not just the slices — a dispatch receives core **plus** slice, so a
+12 KB core with a 1.5 KB slice saves nothing.
 
 ### 6. Gate prompts get a baseline contract (`sdd`)
 
@@ -163,6 +209,16 @@ commands and when each applies, the layer slices, known-dirty paths, and the fac
 Playwright — not a unit-test runner — is the behavioral gate. The skills read this file and stay
 generic. A new project supplies its own profile.
 
+**The skills must cite the profile, not duplicate it.** Review found the original plan writing
+gate tiers and the Playwright fact into the profile *and* inlining the same rules into
+`sdd/SKILL.md` and `feature-spec/SKILL.md` — two copies that drift, and the portability goal
+unmet for two of the three skills. Where a skill needs a repo-specific rule, it points at
+`.claude/repo-profile.md` as the source.
+
+A related simplification, worth doing while here: `writing-plans/SKILL.md` carries its own copy of
+the repo's commands in a table at line 38, duplicating `REFERENCE.md` §3 and its own Provenance
+table. Point it at the profile and delete the duplicate rather than maintaining a third copy.
+
 ## Expected savings
 
 Derived from artifact sizes and the dispatch counts in `log.txt`. **Estimates, not measurements.**
@@ -203,6 +259,20 @@ escalation rules, and plan templates are kept.
 
 No backlog remains, so the pipeline is validated on the next real change in this repo. Record:
 dispatch count, wall-clock, and whether any gate FAIL was a false positive.
+
+**A baseline is captured first, before any change lands.** Review noted the 40% claim is otherwise
+unfalsifiable: with no backlog, the "next real change" may never come, and nothing comparable was
+recorded beforehand. The eleven `doc/spec/*.log.txt` files already on disk carry per-task gate
+verdicts, attempt counts, and deviation records; those plus the artifact byte totals are extracted
+into a baseline table as the plan's first step.
+
+**This plan modifies the pipeline that would execute it.** Tasks editing `sdd`, `writing-plans`,
+and `feature-spec` change the rules mid-run: a controller holds the pre-edit skill text in context
+while later tasks run against a file that no longer matches, and a mid-plan session restart would
+resume under the new rules — including the clean-tree precondition, which the in-flight run's own
+untracked `PROGRESS.md` and `log.txt` would trip if they were not pre-declared. Therefore: skill
+edits take effect on the **next** invocation, not the current one, and this plan is executed
+directly rather than through `/sdd`.
 
 A controlled comparison is possible — re-run feature 010 on a throwaway branch, since its
 false-positive cycles are documented — but it costs a full feature's tokens to measure.
