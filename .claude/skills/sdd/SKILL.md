@@ -13,7 +13,7 @@ Execute a `plan.md` task-by-task using **fresh subagents** for implementation an
 /sdd <path-to-plan.md>
 ```
 
-e.g. `/sdd doc/plans/003-record-expense/plan.md` or `/sdd features/005.record-expense.plan.md`.
+e.g. `/sdd doc/features/005-record-expense/plan.md`.
 
 ## Core invariants
 
@@ -213,7 +213,7 @@ TASK AS SPECIFIED (verbatim from plan.md)
 
 SOURCE REQUIREMENT
 {{relevant excerpt from the spec the plan cites (features/NNN.*.md /
-  doc/spec/*.md), or "None cited — judge against the task text only."}}
+  doc/features/<NNN>-<slug>/spec.md), or "None cited — judge against the task text only."}}
 
 Do this, in order:
 1. Run `git status --short` and `git diff` (or `git diff --staged` if the

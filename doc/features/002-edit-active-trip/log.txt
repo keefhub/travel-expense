@@ -1,0 +1,239 @@
+=====================================================================
+Task 1: [Domain] — getTripFormValues converts a Trip into pre-filled form values
+Completed: 2026-09-10
+Commit: 93931a0
+
+Summary:
+  Added getTripFormValues(trip: Trip): TripFormValues to lib/trip.ts,
+  converting a stored Trip back into the form-values shape TripEditForm
+  (Task 2) will pre-fill from. An absent budget becomes "" rather than
+  "0" or "undefined".
+
+Key Decisions:
+  - None beyond what the spec/plan already specified verbatim.
+
+Deviations:
+  - Before implementing, `npx tsc --noEmit` surfaced an unrelated stale
+    `.next/types` cache error (referencing a not-yet-created
+    app/trip/edit/page.tsx, left over from an earlier review agent's
+    now-reverted probe). The implementer deleted `.next/` and re-ran
+    `npm run build` once to regenerate it before continuing — no source
+    files were involved, and this is not expected to recur since the
+    stale artifact is gone.
+  - The working tree had unrelated pre-existing uncommitted changes in
+    CLAUDE.md and part of REFERENCE.md (both referencing a "design.md"
+    doc, from a prior session, unrelated to this plan). These were left
+    unstaged and NOT committed as part of this task — only the specific
+    REFERENCE.md hunk documenting getTripFormValues, plus lib/trip.ts,
+    were staged and committed (verified via `git add -p` and
+    `git diff --staged` before commit).
+
+Files Changed:
+  - lib/trip.ts (modified — added getTripFormValues)
+  - REFERENCE.md (modified — lib/trip.ts file-tree entry now mentions
+    getTripFormValues)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, exact expected TS2724 line
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npx tsc --noEmit (after cleanup)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 2: [UI] — TripEditForm renders a pre-filled, validated trip edit form
+Completed: 2026-09-10
+Commit: cebb2c5
+
+Summary:
+  Added components/TripEditForm.tsx: pre-fills from a stored Trip via
+  getTripFormValues (Task 1), shows two read-only derived fields (travel
+  days, trip currency) recalculated live from current form state, and
+  reuses submitTripSetup unchanged for validation/save. Navigates to "/"
+  via router.push on a successful save.
+
+Key Decisions:
+  - None beyond what the spec/plan already specified verbatim for the
+    happy-path implementation.
+
+Deviations:
+  - The plan's literal Step 3 code block rendered the travel-days
+    paragraph as plain `{durationDays} {durationDays === 1 ? "day" :
+    "days"}` with no guard. Two rounds of the code-quality review gate
+    found this was buggy: (1) an empty/cleared date field makes
+    calculateTripDurationDays return NaN, rendering literally "NaN
+    days"; (2) after a first fix guarded only Number.isFinite, an
+    end-date-before-start-date combination produces a finite NEGATIVE
+    number (e.g. -4), which passed that guard and rendered "-4 days".
+    This was the task's 2nd consecutive Gate-B failure, so per /sdd's
+    escalation rule the automatic fix-and-re-review cycle stopped; per
+    CLAUDE.md's outer loop, the controller (not a subagent) applied the
+    root-cause fix directly: `Number.isFinite(durationDays) &&
+    durationDays > 0 ? ... : "-"`. Verified this resolves both failure
+    modes (including the same-start/end-date edge case correctly still
+    showing "1 day") via a dedicated verification subagent, npx tsc
+    --noEmit, and npm run lint, before committing. plan.md's Step 3 code
+    block was updated in place to match what actually shipped, with the
+    superseded intermediate step struck through per PLAN-MAINTENANCE.md.
+  - No other deviation. This is a UI-only defect (display text), not a
+    business-rule violation — saving/validation was correct throughout
+    all three fix rounds; only the read-only travel-days text could show
+    garbage values while the user was mid-edit, before submitting.
+
+Files Changed:
+  - components/TripEditForm.tsx (created)
+  - REFERENCE.md (modified — added TripEditForm.tsx to the components/
+    file-tree entry and the "only other implemented pieces" sentence)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, exact expected TS2307 line
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+  (post-fix) npx tsc --noEmit        exit 0, no output
+  (post-fix) npm run lint            exit 0, no output
+
+Review Gate — Spec:    PASS (attempt 1, re-confirmed after fix)
+Review Gate — Quality: FAIL (attempt 1: NaN bug) -> fixed -> FAIL (attempt 2: negative-duration bug,
+                        2nd consecutive failure, /sdd escalation triggered) -> controller applied
+                        root-cause fix per CLAUDE.md outer loop -> PASS (verified by dedicated
+                        review subagent)
+=====================================================================
+
+=====================================================================
+Task 3: [Route] — /trip/edit loads the active trip, guards the no-trip case, and saves edits
+Completed: 2026-09-10
+Commit: db3b202
+
+Summary:
+  Added app/trip/edit/page.tsx: a client route using useSyncExternalStore
+  over a per-mount store (mirroring app/page.tsx's established
+  hydration-safe pattern), redirecting to "/" via router.replace inside a
+  useEffect when no trip exists, otherwise mounting TripEditForm (Task 2)
+  with the loaded trip.
+
+Key Decisions:
+  - Deliberately did NOT use a plain useEffect + setState pattern to load
+    the trip, even though it reads more simply. That alternative was
+    empirically tried during plan review and fails npm run lint
+    (react-hooks/set-state-in-effect, part of eslint-config-next's
+    core-web-vitals preset) because it calls a state setter synchronously
+    inside an effect body. The useSyncExternalStore pattern's only
+    useEffect calls router.replace, never a state setter, so the rule
+    has nothing to flag — verified clean by both review gates and by the
+    implementer's own lint run.
+
+Deviations:
+  - IMPORTANT: this environment has NO browser-automation tool available
+    (only WebFetch exists, which cannot execute JS or access
+    localStorage). The plan's Steps 5-7 (manual checks: no-trip redirect,
+    the full pre-fill/edit/save/validation matrix from AC-002-01 through
+    AC-002-10, and the storage-failure/AC-002-11 check) could NOT be
+    performed. This was disclosed rather than glossed over, per this
+    project's standing instruction to say so explicitly when UI behavior
+    can't be tested rather than claim success. plan.md's Steps 5-7 are
+    marked "NOT PERFORMED" rather than ticked.
+  - Compensated as much as static analysis allows: both review-gate
+    subagents traced every scenario (SSR snapshot, first client read,
+    no-trip redirect, trip-exists render, and the react-hooks lint
+    concern) by hand against the real code and documented
+    React/Next.js/ESLint semantics, and both independently reached PASS.
+    This is NOT a substitute for the plan's own manual browser checks.
+  - RESIDUAL GAP flagged to the user: Steps 5-7's three manual browser
+    checks (no-trip redirect, the pre-fill/edit/save/validation session,
+    and the storage-failure check) should be run by a human in an actual
+    browser before treating feature 002 as fully verified end-to-end.
+  - Gate B raised two Advisory (non-blocking) findings, not acted on:
+    (1) app/trip/edit/page.tsx has no code comment explaining the
+    undefined/null/Trip convention, unlike app/page.tsx's equivalent
+    comment; (2) the TripSnapshot type and createTripStore scaffolding
+    are near-duplicated between app/page.tsx and this new file, with no
+    prior deliberate decision recorded to accept that duplication (unlike
+    the TripSetupForm/TripEditForm duplication, which the plan's header
+    already documents as a considered tradeoff). Neither was required by
+    the task/spec; left as-is per this project's "don't refactor beyond
+    what the task requires" convention, noted here for future reference
+    if a later feature (003) touches the same pattern again.
+
+Files Changed:
+  - app/trip/edit/page.tsx (created)
+  - REFERENCE.md (modified — added the trip/edit/page.tsx file-tree
+    entry, updated TripEditForm.tsx's status to mounted, fixed the
+    now-stale "no other routes beyond /" sentence)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, route table includes all six routes
+  Manual browser checks (Steps 5-7): NOT PERFORMED — no browser
+    automation tool available in this environment.
+
+Review Gate — Spec:    PASS (attempt 1, with an explicit "untestable without browser" list recorded)
+Review Gate — Quality: PASS (attempt 1, with 2 non-blocking Advisory findings, not acted on)
+=====================================================================
+
+=====================================================================
+Task 4: [Route] — Home screen links to the trip edit route
+Completed: 2026-09-10
+Commit: 56d623e
+
+Summary:
+  Added an "Edit trip" <Link href="/trip/edit"> to app/page.tsx's
+  placeholder trip-summary branch (rendered only when a trip exists).
+  Updated REFERENCE.md to reflect this and to flip every remaining
+  "(002, in progress)" marker to "(002, complete)" now that this was the
+  plan's final task.
+
+Key Decisions:
+  - None beyond what the plan specified verbatim — this was the smallest
+    task in the plan (one import, one JSX element).
+
+Deviations:
+  - Same environmental gap as Task 3: no browser-automation tool exists
+    here, so Step 5 (the full Home -> edit -> save -> Home round trip,
+    the single scenario the whole feature exists to deliver) could NOT
+    be executed interactively. Marked "NOT PERFORMED" in plan.md rather
+    than falsely ticked.
+  - Compensated with static verification: both review gates confirmed
+    the <Link> only renders in the trip-exists branch, targets a route
+    file that provably exists on disk (app/trip/edit/page.tsx), uses
+    next/link (not a plain <a>, preserving client-side navigation and
+    avoiding an unnecessary full-page reload through the
+    useSyncExternalStore hydration logic), and that TripEditForm's own
+    router.push("/") on save (already verified in Task 2) completes the
+    loop back to a fresh read of storage via page.tsx's per-mount store.
+    This is strong static evidence, not an executed test.
+
+Files Changed:
+  - app/page.tsx (modified — added Link import and the Edit trip link)
+  - REFERENCE.md (modified — app/page.tsx file-tree comment now mentions
+    the link; getTripFormValues's tag flipped to "(002, complete)"; no
+    "in progress" markers for feature 002 remain anywhere in the file)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same six-route table as Task 3
+  Manual round-trip check (Step 5): NOT PERFORMED — no browser
+    automation tool available in this environment.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+RESIDUAL GAP ACROSS THE WHOLE PLAN (see Tasks 3 and 4 above): this environment has no
+browser-automation tool, so none of the plan's manual browser-based checks (Task 3 Steps 5-7,
+covering AC-002-01 through AC-002-11's full pre-fill/edit/save/validation/storage-failure matrix,
+and Task 4 Step 5's Home->edit->save->Home round trip) were executed against a real browser and
+real localStorage. Every one of these scenarios was independently traced by at least two review-gate
+subagents against the actual committed code and documented React/Next.js/ESLint semantics, and all
+passed that static scrutiny — including two real bugs (NaN and negative day-count display) that
+static review DID catch and get fixed before commit. This is the best verification available in this
+environment, but it is not a substitute for a human running through the app in an actual browser.
+Recommended before considering feature 002 fully done: a human (or an environment with browser
+automation) should run Task 3's Steps 5-7 and Task 4's Step 5 against `npm run dev` at least once.
+=====================================================================

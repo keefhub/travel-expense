@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: "Turn a feature spec, ticket, or freeform requirement into a numbered, task-by-task implementation plan saved as plan.md, with a Files manifest and a literal verification command plus its exact expected output on every step. Use when asked to write a plan, plan a feature, plan an implementation, break work into tasks, create a task breakdown, produce an implementation plan for a features/NNN.*.md or doc/spec/*.md file, or amend/extend/update an existing plan. Also use before starting any multi-file change in this Next.js App Router repo, where data (lib/storage), domain (lib/*), component, and route work must land as separate tasks. Do NOT use to write product requirements, business analysis, acceptance criteria, or Gherkin specs — those are authored under features/ and doc/spec/ and are the input to this skill, not its output. Do NOT use to execute a plan; this skill stops at a saved plan."
+description: "Turn a feature spec, ticket, or freeform requirement into a numbered, task-by-task implementation plan saved as plan.md, with a Files manifest and a literal verification command plus its exact expected output on every step. Use when asked to write a plan, plan a feature, plan an implementation, break work into tasks, create a task breakdown, produce an implementation plan for a features/NNN.*.md or doc/features/*/spec.md file, or amend/extend/update an existing plan. Also use before starting any multi-file change in this Next.js App Router repo, where data (lib/storage), domain (lib/*), component, and route work must land as separate tasks. Do NOT use to write product requirements, business analysis, acceptance criteria, or Gherkin specs — those are authored under features/ and doc/features/ and are the input to this skill, not its output. Do NOT use to execute a plan; this skill stops at a saved plan."
 ---
 
 # writing-plans
@@ -65,24 +65,38 @@ Next.js 16 differs from older training data. When a task depends on an App Route
 
 In order — take the first that applies:
 
-1. **An explicit path** in the request (`features/005.record-expense.md`, `doc/spec/005.record-expense.md`, a ticket file). Use it.
-2. **A requirement or ticket ID** (`005`, `feature 12`). Resolve it: `ls features/ doc/spec/ | grep -i <id>`. If it matches more than one file, ask which.
+1. **An explicit path** in the request (`features/005.record-expense.md`, `doc/features/005-record-expense/spec.md`, a ticket file). Use it.
+2. **A requirement or ticket ID** (`005`, `feature 12`). Resolve it: `ls features/ doc/features/ | grep -i <id>`. If it matches more than one file, ask which.
 3. **Freeform requirements stated in the conversation.** Use them, and quote them verbatim into the plan's Source field so the plan carries its own source.
 4. **Nothing usable** → ask the user what to plan. Do not invent a requirement.
 
 ## Where the plan is saved
 
-- **A source document exists** → save the plan beside it: `doc/spec/005.record-expense.md` → `doc/spec/005.record-expense.plan.md`. Keeping plan and source adjacent is what makes the plan findable later.
-- **No source document** → `doc/plans/<NNN>-<feature-name>/plan.md`, where `<NNN>` is the next unused 3-digit number under `doc/plans/`. This keeps every generated artifact — specs from `/feature-spec` and plans from this skill — under the single `doc/` root. Compute the number with plain shell — no helper script:
+Every feature owns one folder: `doc/features/<NNN>-<slug>/`, holding `spec.md` (from
+`/feature-spec`), `plan.md` (from this skill), and `log.txt` (from `/sdd`). See
+[`doc/README.md`](../../../doc/README.md).
+
+- **The feature has a number** (`features/005.record-expense.md`, or an existing
+  `doc/features/005-record-expense/spec.md`) → the plan goes to
+  `doc/features/005-record-expense/plan.md`. `<NNN>` and `<slug>` come from the feature filename;
+  never invent a new number for an existing feature.
+- **Pipeline or tooling work, not a product feature** → `doc/workflow/<slug>.plan.md`, beside its
+  design document.
+- **Neither** (a freeform request with no feature file) → `doc/features/<NNN>-<slug>/plan.md` with
+  the next unused number. Compute it with plain shell — no helper script:
 
 ```bash
-last=$(ls -d doc/plans/[0-9][0-9][0-9]-* 2>/dev/null | sed 's#.*/##' | grep -oE '^[0-9]{3}' | sort -n | tail -1)
-printf '%03d\n' $(( 10#${last:-000} + 1 ))
+last=$(ls -d doc/features/[0-9][0-9][0-9]-* 2>/dev/null | sed 's#.*/##' | grep -oE '^[0-9]{3}' | sort -n | tail -1)
+printf '%03d
+' $(( 10#${last:-000} + 1 ))
 ```
 
-`doc/plans/` does not exist in this repo yet, so this prints `001`. Before writing, confirm the number is free on disk — `ls -d doc/plans/<NNN>-* 2>/dev/null` must print nothing. If it prints a directory, that number is taken: increment and re-check rather than overwriting someone else's plan.
+Before writing, confirm the number is free — `ls -d doc/features/<NNN>-* 2>/dev/null` must print
+nothing. If it prints a directory, that number is taken: increment and re-check rather than
+overwriting an existing plan.
 
-`log.txt` (see `PLAN-MAINTENANCE.md`) always sits next to `plan.md`.
+`log.txt` (see `PLAN-MAINTENANCE.md`) always sits next to `plan.md`. `PROGRESS.md` also lands there
+but is git-ignored — it is run state, and progress is derived from `git log`.
 
 ---
 
@@ -93,7 +107,7 @@ printf '%03d\n' $(( 10#${last:-000} + 1 ))
 Before decomposing, write out — in your reply, not just internally:
 
 1. The requirement in **1–2 sentences**.
-2. Every **negative constraint**, restated explicitly: `Note: will NOT touch the public API`, `Note: will NOT modify the existing storage key format`, `Note: does NOT add edit or delete for expenses`. Scope sections in the source documents (`features/*.md`, `doc/spec/*.md` — "Out of scope") are the first place to look for these.
+2. Every **negative constraint**, restated explicitly: `Note: will NOT touch the public API`, `Note: will NOT modify the existing storage key format`, `Note: does NOT add edit or delete for expenses`. Scope sections in the source documents (`features/*.md`, `doc/features/*/spec.md` — "Out of scope") are the first place to look for these.
 3. Every assumption, each as `Assumed: X`.
 
 Then **proceed immediately to Step 2 without waiting for confirmation.** The restatement exists so the user can correct the scope while you draft — a blocking question here costs more than a correction later. Ask only if you have no usable requirement at all (input resolution case 4).
@@ -399,8 +413,8 @@ State what changed _and why_.
 | Strict TypeScript, `@/*` alias                                                     | `cat tsconfig.json`                                                                 | `"strict": true`, `"paths": {"@/*": ["./*"]}`                                                                                                                                                                                                                                                                       |
 | ESLint 9 flat config                                                               | `cat eslint.config.mjs`                                                             | `defineConfig([...nextVitals, ...nextTs, ...])`                                                                                                                                                                                                                                                                     |
 | Existing source layout                                                             | `find app -type f`                                                                  | only `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `app/favicon.ico`                                                                                                                                                                                                                                         |
-| Layer names (`lib/types.ts`, `lib/storage`, `lib/<domain>`, `components/`, `app/`) | `grep -rn 'lib/\|components/' doc/spec/ features/`                                  | the §2.4 module map in `doc/spec/005.record-expense.md` used exactly these paths. Note: `doc/spec/` is regenerated per feature and was empty again at the time of writing — re-derive from whatever spec documents exist when you re-check.                                                                         |
+| Layer names (`lib/types.ts`, `lib/storage`, `lib/<domain>`, `components/`, `app/`) | `grep -rn 'lib/\|components/' doc/features/ features/`                                  | the §2.4 module map in `doc/features/005-record-expense/spec.md` used exactly these paths. Re-derive from whatever spec documents exist under `doc/features/` when you re-check.                                                                         |
 | No backend                                                                         | `sed -n '1,20p' features/OVERVIEW.md`                                               | "stores all data in browser local storage. It does not use a backend service, SQL database, or external database."                                                                                                                                                                                                  |
 | Next.js docs location                                                              | `ls node_modules/next/dist/docs/`                                                   | `01-app`, `02-pages`, `03-architecture`, `04-community`, `index.md`                                                                                                                                                                                                                                                 |
-| `doc/plans/` numbering starts at 001                                               | `ls -d doc/plans/[0-9][0-9][0-9]-*`                                                 | `No such file or directory` — `doc/plans/` does not exist                                                                                                                                                                                                                                                           |
+| Feature docs live one folder per feature (verified 2026-09-12)                     | `ls doc/features/`                                                                  | `<NNN>-<slug>/` directories, each holding `spec.md`, `plan.md`, `log.txt`. `PROGRESS.md` is git-ignored. The former flat `doc/spec/NNN.name.{md,plan.md,log.txt}` layout is gone.                                                                                                                                    |
 | Commit convention                                                                  | `git log --oneline`                                                                 | **only one commit** (`d9e2702 Initial commit from Create Next App`) — no convention is derivable from history. The Conventional Commits format above is the convention this repo documents for itself in `CLAUDE.md`'s feature loop; treat it as documented, not observed, and re-check it once real commits exist. |

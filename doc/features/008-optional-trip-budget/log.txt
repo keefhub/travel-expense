@@ -1,0 +1,144 @@
+=====================================================================
+Task 1: [Domain] — getRemainingBudget returns budget minus converted total, or null when incomplete
+Completed: 2026-09-11
+Commit: 203b157
+
+Summary:
+  Added getRemainingBudget(budget, convertedTotals) to lib/currency.ts,
+  returning the remaining amount when the conversion is complete, or null
+  when it isn't. Documented in REFERENCE.md's lib/currency.ts entry.
+
+Key Decisions:
+  - None beyond what the spec/plan already specified verbatim.
+
+Deviations:
+  - The implementer's probe step reported tsc exit code 1 instead of the
+    expected 2, though the error TEXT matched exactly. The controller
+    independently reproduced the same TS2305 error class fresh and
+    confirmed exit code 2 is correct in this repo — the implementer's "1"
+    was an artifact of how their own shell/tool captured the exit status,
+    not a real discrepancy. No rework needed.
+
+IMPORTANT — discovered mid-task, not caused by this task:
+  While verifying this task, the controller found that the previously-
+  stashed dark-mode theming refactor (DateField.tsx, ThemeToggle.tsx,
+  lib/theme.ts) has REAPPEARED as new untracked/modified files in the
+  shared working tree, even though the git stash entry itself is still
+  intact and untouched (`git stash list` shows it unpopped). This means
+  someone — most likely the repo's human user, working directly in an
+  editor with unsaved buffers — resumed and is actively continuing this
+  work independently of the stash (a stash only affects on-disk state; it
+  cannot affect content sitting in an editor's memory that gets re-saved
+  later). This time it compiles cleanly (`npx tsc --noEmit` exits 0), only
+  one non-blocking lint warning (unused `DateField` import in
+  TripEditForm.tsx). Additionally, lib/expenses.ts now has new,
+  uncommitted content (getRecentExpenses, hasExpenseDescription,
+  getExpenseDescription) that matches feature 009's (home dashboard)
+  "last 5 transactions" requirement — meaning feature 009 work is also
+  being actively, concurrently written into the shared tree right now.
+  Task 1's own files (lib/currency.ts, REFERENCE.md) were re-verified
+  clean and isolated from all of this immediately before committing.
+  Task 2 (this plan's next task) modifies app/page.tsx, which is exactly
+  one of the files apparently under live concurrent edit — the controller
+  is pausing before starting Task 2 to check with the user rather than
+  risk colliding with in-progress work.
+
+Files Changed:
+  - lib/currency.ts (modified — added getRemainingBudget)
+  - REFERENCE.md (modified — lib/currency.ts entry updated, stale tag
+    dropped)
+
+Verification:
+  npx tsc --noEmit (probe present)   error text matched exactly (exit
+                                      code reported as 1 by the
+                                      implementer, independently
+                                      reconfirmed as 2 by the controller
+                                      for the same error class)
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npx tsc --noEmit (after cleanup)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 2: [Route] — app/page.tsx shows budget and remaining budget when a budget is set
+Completed: 2026-09-11
+Commit: 50da475
+
+Summary:
+  Added a Budget section to app/page.tsx, shown whenever trip.budget is
+  set: the budget amount, plus either the remaining amount (via
+  getRemainingBudget, danger-styled when negative, correctly showing an
+  exact-zero remaining budget via a !== null check) or a role="status"
+  note when a used currency still lacks an exchange rate. Marked feature
+  005 complete in REFERENCE.md's app/page.tsx entry.
+
+Key Decisions:
+  - None beyond what the spec/plan already specified verbatim.
+
+Deviations:
+  - Gate B raised one non-blocking observation (PASS verdict, not acted
+    on): design.md documents --success as meaning "under-budget," and
+    this section only applies --danger for negative remaining, never
+    --success for non-negative. This goes beyond what doc/spec/008's own
+    BR-008-08 and contrarian review actually specified (only the danger
+    case was reviewed and gated) — adding success styling now would ship
+    UI behavior that never went through the BA/SA spec process. Left
+    as-is; flagged here as a candidate for feature 009's fuller dashboard
+    to reconsider.
+  - Same environmental gap as every prior route/UI task in this project:
+    no browser-automation tool exists here, so Step 5's manual checks
+    (re-verifying budget entry/edit, and the six-scenario display matrix
+    covering AC-008-01 through AC-008-09) could NOT be performed. Marked
+    "NOT PERFORMED" in plan.md rather than falsely ticked. Both review
+    gates independently traced every scenario by hand against the real
+    code (including the exact-zero boundary and the trivially-complete
+    zero-expenses case) as the deepest available substitute.
+  - RESIDUAL GAP flagged to the user: Step 5's manual browser checks
+    should be run by a human in an actual browser before treating
+    feature 008 as fully verified end-to-end.
+
+  MID-TASK INCIDENT (see also the note at the top of this file, Task 1):
+  while dispatching this task, the controller discovered the previously-
+  stashed dark-mode theming refactor had partially reappeared in the
+  shared working tree in a broken, inconsistent state (some files
+  restored, TripEditForm.tsx missing its DateField import again) as a
+  side effect of a live human editing session that had since stopped. Per
+  the user's explicit instruction ("get it back then continue"), the
+  controller: (1) reset TripEditForm.tsx's small broken local fragment,
+  (2) ran `git stash apply` to restore the complete original snapshot of
+  the refactor across all 7 tracked files plus 3 untracked files, (3)
+  fixed the one missing `import DateField from "@/components/DateField"`
+  line in TripEditForm.tsx (the same root-cause bug that originally broke
+  this refactor before it was ever stashed), (4) verified npx tsc
+  --noEmit / npm run lint / npm run build all pass cleanly with the
+  restored+fixed refactor present, and (5) dropped the stash since it was
+  now fully and correctly applied. This restored work remains
+  UNCOMMITTED (matching its state before the incident) — fixing the
+  break was necessary to unblock this session's own work, but committing
+  someone else's unrelated theming refactor is not this plan's job.
+  Task 2's own implementer was explicitly told not to touch or reference
+  any of those files/tokens, and did not.
+
+Files Changed:
+  - app/page.tsx (modified — added the Budget section)
+  - REFERENCE.md (modified — app/page.tsx entry describes the new
+    section, feature 005 marked complete)
+  (Separately, NOT part of this task's commit: components/TripEditForm.tsx
+  received a one-line fix — the missing DateField import — as part of
+  restoring the unrelated stashed theming refactor described above. That
+  fix remains uncommitted, alongside the rest of that refactor.)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same seven-route table as Task 1
+  Manual browser checks (Step 5): NOT PERFORMED — no browser automation
+    tool available in this environment.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, with one non-blocking observation, not acted on)
+=====================================================================

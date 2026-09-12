@@ -1,0 +1,302 @@
+=====================================================================
+Task 1: [Domain] — getCategoryTotals groups expense amounts by category in the trip currency
+Completed: 2026-09-11
+Commit: 4cda5e1
+
+Summary:
+  Added CategoryTotal/CategoryTotalsResult interfaces and getCategoryTotals
+  to lib/currency.ts, grouping expense amounts by category converted to
+  the trip currency. Mirrors getConvertedTotals's missing-rate exclusion
+  semantics. Documented in REFERENCE.md's lib/currency.ts entry.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - None. Probe error text/exit code matched the plan's prediction
+    exactly on first try.
+
+Files Changed:
+  - lib/currency.ts (modified — added getCategoryTotals)
+  - REFERENCE.md (modified — lib/currency.ts entry updated; only that
+    one hunk staged, isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits already in the shared working tree)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npx tsc --noEmit (after cleanup)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, one non-blocking observation: getCategoryTotals's
+  conversion loop duplicates getConvertedTotals's loop body rather than sharing a helper —
+  not acted on, flagged as a future extraction candidate only)
+=====================================================================
+
+=====================================================================
+Task 2: [Domain] — getRecentExpenses returns the newest expenses, newest first
+Completed: 2026-09-11
+Commit: 317701b
+
+Summary:
+  Added RECENT_EXPENSE_LIMIT and getRecentExpenses to lib/expenses.ts,
+  returning the newest expenses by date (newest first), defaulting to
+  the last 5. Documented in REFERENCE.md's lib/expenses.ts entry.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - None. Probe error text/exit code matched the plan's prediction
+    exactly on first try.
+
+Files Changed:
+  - lib/expenses.ts (modified — added getRecentExpenses)
+  - REFERENCE.md (modified — lib/expenses.ts entry updated; only that
+    one hunk staged via `git add -p`, isolated from unrelated
+    pre-existing uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npx tsc --noEmit (after cleanup)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, one non-blocking observation: a negative limit
+  argument would hit Array.slice's negative-index semantics rather than returning an empty
+  array; not currently reachable since the only caller uses the default; not acted on)
+=====================================================================
+
+=====================================================================
+Task 3: [UI] — CategoryPieChart renders a hand-rolled conic-gradient chart with a legend
+Completed: 2026-09-11
+Commit: 4430fd2
+
+Summary:
+  Added components/CategoryPieChart.tsx: a plain (no 'use client') component
+  taking categoryTotals, rendering a CSS conic-gradient circle (role="img"
+  with a summarizing aria-label) plus a text legend with per-category color
+  swatches and percentages. Colors come from a deterministic hsl hue
+  rotation across categories. Documented in REFERENCE.md's file tree
+  (both the components/ entry and the "only other implemented pieces"
+  summary sentence).
+
+Key Decisions:
+  - Cumulative percent-range accumulation uses Array.prototype.reduce with
+    a local accumulator array, not the plan's original `let cumulativePercent`
+    reassigned inside .map() — see Deviations. External behavior/output is
+    identical (contiguous [start,end] ranges, same gradient/legend text).
+    plan.md's Step 3 code block was updated in place to match what shipped.
+
+Deviations:
+  - The implementer's first attempt used the plan's literal code
+    (reassigning an outer `let cumulativePercent` inside a .map()
+    callback) and hit a real ESLint failure: this repo's
+    react-hooks/immutability rule rejects reassigning a variable during
+    render. This was the task's one implementation-failure attempt. A
+    fix subagent rewrote the accumulation as a reduce-based local
+    accumulator (push onto a fresh array, deriving each start from the
+    previous segment's end) — same output, no render-time reassignment.
+    Both review gates then ran fresh against the corrected code and
+    passed. This did not count as a second failed attempt since the
+    original attempt never reached a review gate.
+  - Gate B raised one non-blocking accessibility observation (PASS
+    verdict, not acted on): the chart's aria-label and the visible text
+    legend both announce the same "category: percent" text, causing a
+    screen reader to hear it twice. Not required by the spec; flagged as
+    a possible future polish item.
+
+Files Changed:
+  - components/CategoryPieChart.tsx (created)
+  - REFERENCE.md (modified — two hunks: the components/ file-tree entry,
+    and the "only other implemented pieces so far" summary sentence;
+    isolated via `git add -p` from unrelated pre-existing uncommitted
+    REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint (first attempt)       exit 1, react-hooks/immutability error (see Deviations)
+  npm run lint (after fix)           exit 0, no output
+  npm run build (after fix)          exit 0, route table unchanged (component not yet mounted)
+
+Review Gate — Spec:    PASS (attempt 1, run against the corrected code)
+Review Gate — Quality: PASS (attempt 1, run against the corrected code; one non-blocking
+  accessibility observation, not acted on)
+=====================================================================
+
+=====================================================================
+Task 4: [UI] — Dashboard assembles the full dashboard body
+Completed: 2026-09-11
+Commit: 9766cdf
+
+Summary:
+  Added components/Dashboard.tsx, absorbing app/page.tsx's inlined trip
+  summary, total spending, and budget sections, plus two new sections
+  (category pie chart, recent transactions). Implements BR-009-02: total
+  spending now always renders, even at zero. Not yet mounted in any
+  route. Documented in REFERENCE.md's components/ entry.
+
+Key Decisions:
+  - Included the hydration-safety comment (added to the plan proactively
+    after Pass B's adversarial critique flagged the synchronous storage
+    reads as a likely false-positive target for a code-quality gate,
+    since REFERENCE.md's rule against reading localStorage during
+    render/SSR is stated unconditionally). Gate B independently
+    confirmed no render-time reassignment bug (the class of issue that
+    broke Task 3) is present here.
+
+Deviations:
+  - None from the plan as (already-amended) written.
+  - Gate B flagged one non-blocking observation, not acted on: the
+    comment's premise ("only ever mounted after app/page.tsx's own
+    useSyncExternalStore gate resolves") is aspirational until Task 5
+    actually wires the mount — app/page.tsx doesn't import Dashboard
+    yet. Noted for Task 5's own reviewers to re-check once the mount
+    exists.
+
+Files Changed:
+  - components/Dashboard.tsx (created)
+  - REFERENCE.md (modified — one hunk, the components/ file-tree entry;
+    isolated via `git add -p` from unrelated pre-existing uncommitted
+    REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged (component not yet mounted)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, one non-blocking observation re: the mount-order
+  premise being currently unverifiable until Task 5 lands — not acted on, flagged forward)
+=====================================================================
+
+=====================================================================
+Task 5: [Route] — app/page.tsx mounts Dashboard
+Completed: 2026-09-11
+Commit: de47404
+
+Summary:
+  Replaced app/page.tsx's content with a thin trip-gate shell: null
+  while undetermined, TripSetupForm when no trip is saved, else
+  Dashboard. Dropped now-unused imports whose logic moved into
+  Dashboard.tsx in the prior task. Updated REFERENCE.md's app/page.tsx
+  entry, plus fixed Dashboard.tsx/CategoryPieChart.tsx's entries that
+  the mount made stale.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - Gate A's first pass FAILED: the task's own REFERENCE.md instruction
+    (rewrite only the app/page.tsx entry) left two OTHER entries stale
+    as a side effect — components/CategoryPieChart.tsx and
+    components/Dashboard.tsx both still said "not yet mounted in any
+    route," which became false once this task's mount landed. This is
+    the task's one allowed fix-and-re-review cycle: a fix subagent
+    updated exactly those two trailing clauses (nothing else), and
+    Gate A was re-run fresh against the corrected diff and passed. Gate
+    B was unaffected (its scope was app/page.tsx's logic, untouched by
+    the fix) and had already passed on the first pass.
+  - Step 5's manual browser checks (5a/5b/5c) could NOT be performed —
+    no browser-automation tool exists in this environment. The
+    implementer did the best available substitute: started `npm run
+    dev`, curled `/` (200, correct empty SSR shell since trip is
+    undefined server-side) and a nonexistent expense id (404, expected
+    since Task 6 doesn't exist yet), then stopped the server. Both
+    review gates independently re-verified this reasoning by reading
+    the real code rather than trusting the report. Marked "NOT
+    PERFORMED" in plan.md rather than falsely ticked.
+  - RESIDUAL GAP flagged to the user: Step 5's manual browser checks
+    (zero-expense dashboard text, category chart with real expenses,
+    five-item recent-transactions cap and tap-through) should be run by
+    a human in an actual browser before treating feature 009 as fully
+    verified end-to-end. This mirrors the same residual gap already
+    flagged for feature 008's Task 2.
+
+Files Changed:
+  - app/page.tsx (modified — replaced with the thin shell)
+  - REFERENCE.md (modified — two hunks: the app/page.tsx entry rewrite,
+    and the Dashboard.tsx/CategoryPieChart.tsx mount-status fix;
+    isolated via `git add -p` from unrelated pre-existing uncommitted
+    REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same 7-route table (no new route)
+  Manual browser checks (Step 5): NOT PERFORMED — no browser automation
+    tool available in this environment. Partial substitute: dev server
+    boot + curl checks against / and a nonexistent /expenses/:id.
+
+Review Gate — Spec:    PASS (attempt 2 — see Deviations)
+Review Gate — Quality: PASS (attempt 1, two non-blocking observations: a couple of
+  previously-multi-line statements collapsed to single lines as an incidental side effect
+  of the full-file replacement, and two explanatory comments present before this task were
+  dropped; neither is a logic change, not acted on)
+=====================================================================
+
+=====================================================================
+Task 6: [Route] — app/expenses/[id]/page.tsx shows a view-only transaction detail
+Completed: 2026-09-11
+Commit: e2ce609
+
+Summary:
+  Added app/expenses/[id]/page.tsx, this app's first dynamic route
+  segment: a view-only expense detail page (currency/amount, category,
+  date, payment method, location, description) with a "Back to home"
+  link, an "Expense not found." state for unmatched ids, and a
+  description fallback avoiding the literal string "undefined".
+  Documented in REFERENCE.md's file tree.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - The first `npx tsc --noEmit` run failed with a type error on
+    `PageProps<'/expenses/[id]'>` because `.next/types/routes.d.ts` was
+    stale (generated before this route existed on disk). Per the plan's
+    own contingency guidance, this was diagnosed as a one-time
+    generation-order artifact, not a flaw in the type assumption: ran
+    `npx next typegen` to regenerate the route types, then tsc passed
+    clean. Gate A independently inspected the regenerated
+    routes.d.ts and confirmed PageProps's actual shape
+    (`{ id: string }`) matches what the code expects — the plan's
+    assumption about the generated type was correct.
+  - Step 5's manual browser checks (5a/5b/5c) could NOT be performed —
+    no browser-automation tool exists in this environment, and this
+    route's data is entirely client-side (useSyncExternalStore reads
+    localStorage), so curl only confirms the route resolves (200), not
+    the found/not-found rendering logic. Marked "NOT PERFORMED" in
+    plan.md rather than falsely ticked.
+  - RESIDUAL GAP flagged to the user: Step 5's manual browser checks
+    (full detail for a found expense, missing-description fallback,
+    not-found state) should be run by a human in an actual browser
+    before treating feature 009 as fully verified end-to-end — same
+    residual gap already flagged for Task 5 and for feature 008's
+    Task 2.
+
+Files Changed:
+  - app/expenses/[id]/page.tsx (created)
+  - REFERENCE.md (modified — one hunk, the new file-tree entry;
+    isolated via `git add -p` from unrelated pre-existing uncommitted
+    REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (before typegen)  exit 2, PageProps type error (stale generated types)
+  npx next typegen                   regenerated .next/types/routes.d.ts
+  npx tsc --noEmit (after typegen)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, 8-route table including /expenses/[id] (marked ƒ)
+  Manual browser checks (Step 5): NOT PERFORMED — no browser automation tool available;
+    curl confirmed the route responds 200, but found/not-found rendering could not be
+    exercised without a browser (this route's UI is entirely client-rendered from localStorage).
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================

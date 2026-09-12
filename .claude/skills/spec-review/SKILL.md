@@ -15,8 +15,8 @@ Creating a spec is [`/feature-spec`](../feature-spec/SKILL.md)'s job. This skill
 ## Usage
 
 ```
-/spec-review doc/spec/005.record-expense.md
-/spec-review 005                    # resolve to the matching doc/spec/ file
+/spec-review doc/features/005-record-expense/spec.md
+/spec-review 005                    # resolve to the matching doc/features/<NNN>-<slug>/spec.md
 /spec-review                        # infer from conversation; ask if ambiguous
 ```
 

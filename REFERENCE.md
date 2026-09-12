@@ -61,7 +61,8 @@ app/
 public/           # scaffold SVGs only (next.svg, vercel.svg, file.svg, globe.svg, window.svg)
 features/         # the specs — OVERVIEW.md + 001..015 (source of truth)
 .claude/skills/   # feature-spec, spec-review, writing-plans, git-commit
-doc/              # agent-generated artifacts: doc/spec/ (specs), doc/plans/ (standalone plans)
+doc/              # agent-generated decision trail: doc/features/<NNN>-<slug>/{spec,plan}.md +
+                  #   log.txt, and doc/workflow/ for pipeline work. See doc/README.md
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored
 lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate
@@ -213,8 +214,8 @@ Full rules live in [CLAUDE.md](CLAUDE.md) — this is a summary, not a replaceme
   `@ts-ignore` / `eslint-disable` / deleting the failing code. Max 3 attempts per feature, then stop
   and report.
 
-Other skills: **`/feature-spec`** (deep spec for one feature → `doc/spec/{feature}.md`),
+Other skills: **`/feature-spec`** (deep spec for one feature → `doc/features/{NNN}-{slug}/spec.md`),
 **`/spec-review`** (harden an existing spec), and **`/writing-plans`** (implementation plan →
-`doc/spec/{feature}.plan.md` beside the spec, or `doc/plans/{NNN}-{feature}/plan.md` with no spec).
+`doc/features/{NNN}-{slug}/plan.md` beside the spec).
 All three write under the shared `doc/` root; `/feature-spec` and `/spec-review` handle exactly one
 feature per invocation.

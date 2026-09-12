@@ -46,3 +46,6 @@ next-env.d.ts
 # playwright
 test-results/
 playwright-report/
+
+# sdd run state — progress is derived from git log, not a status file
+PROGRESS.md

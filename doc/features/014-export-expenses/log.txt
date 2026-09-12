@@ -1,0 +1,108 @@
+=====================================================================
+Task 1: [Domain] — formatExpensesAsCsv builds a CSV string with header and escaped rows
+Completed: 2026-09-11
+Commit: dfaec97
+
+Summary:
+  Added lib/export.ts: formatExpensesAsCsv(expenses) builds a CSV
+  string (header row plus one row per expense in
+  Date,Category,Currency,Amount,Payment Method,Location,Description
+  order), with RFC 4180 field escaping via a private escapeCsvField
+  helper. Documented in REFERENCE.md's lib/ file tree.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - None. This was a brand-new file (unlike feature 009's additions to
+    existing modules), so the probe's failure was TS2307 (module not
+    found) rather than TS2305 — as anticipated by the plan, which
+    explicitly called this out and computed the column directly rather
+    than reusing the default-import formula from prior features.
+
+Files Changed:
+  - lib/export.ts (created)
+  - REFERENCE.md (modified — one hunk, the new lib/export.ts file-tree
+    entry; isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npx tsc --noEmit (after cleanup)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, 8-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 2: [Route] — app/settings/page.tsx wires the export action end to end
+Completed: 2026-09-12
+Commit: 011d77f
+
+Summary:
+  Added an "Export expenses" button to app/settings/page.tsx: reads
+  getExpenses() on click, shows a role="status" message with no
+  download when empty, otherwise builds the CSV via
+  formatExpensesAsCsv and triggers a Blob-based download named
+  expenses.csv. Feature 013's reset flow (createTripStore, redirect,
+  confirmingReset branch, reset button) left byte-for-byte unchanged.
+  Documented in REFERENCE.md's app/settings/page.tsx entry.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - The implementer subagent was cut off mid-report by an
+    infrastructure error (a session-limit API error) partway through
+    Step 6 (updating REFERENCE.md), with no final summary delivered.
+    The controller independently verified the actual state of the
+    working tree rather than treating this as a failed attempt: both
+    app/settings/page.tsx and REFERENCE.md were already correctly and
+    completely edited (byte-for-byte matching the plan's Step 1 code
+    and Step 6 instructions), and npx tsc --noEmit / npm run lint /
+    npm run build all passed cleanly with the exact expected route
+    table. Both review gates independently re-verified this from the
+    real files (not from the missing report) before passing. This is
+    treated as a successful first attempt, consistent with the /sdd
+    skill's own guidance that a session interruption mid-task is not
+    itself a failed attempt.
+  - Step 5's manual browser checks (5a-5d) could NOT be performed — no
+    browser-automation tool exists in this environment. Sub-check 5c'
+    (embedded-newline escaping) IS a code-review check, not a UI
+    check, and was fully verified: lib/export.ts's escapeCsvField
+    regex /[",\r\n]/ triggers identically for \n/\r as for the comma
+    and quote cases. The other four scenarios (5a, 5b, 5c, 5d) were
+    traced by both review gates against the real code as the deepest
+    available substitute. Marked "NOT PERFORMED" in plan.md rather
+    than falsely ticked.
+  - RESIDUAL GAP flagged to the user: Step 5's manual browser checks
+    (empty-state message and no download, a successful download with
+    correct header/rows/formatting, a comma/quote round-trip through
+    an actual spreadsheet application, and confirming feature 013's
+    reset-cancel path still works) should be run by a human in an
+    actual browser before treating feature 014 as fully verified
+    end-to-end — the same residual-gap pattern already flagged for
+    every route/UI task across features 008, 009, and 013 in this
+    session.
+
+Files Changed:
+  - app/settings/page.tsx (modified — added the export flow)
+  - REFERENCE.md (modified — one hunk, the settings/page.tsx entry
+    rewrite; isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same 8-route table (no new route)
+  Manual browser checks (Step 5): NOT PERFORMED except 5c' (code-review,
+    fully verified). No browser automation tool available in this
+    environment. Both review gates traced 5a/5b/5c/5d against the real
+    code as the deepest available substitute.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================

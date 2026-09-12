@@ -1,0 +1,201 @@
+=====================================================================
+Task 1: [Domain] — getExpenseTotalsByCurrency groups and sums expenses by currency
+Completed: 2026-09-11
+Commit: 4d2e063
+
+Summary:
+  Added lib/currency.ts with CurrencyTotal and getExpenseTotalsByCurrency, which sums
+  Expense.amount grouped by Expense.currency into one entry per currency present, sorted
+  alphabetically by currency code.
+
+Key Decisions:
+  None beyond the plan as written.
+
+Deviations:
+  None. REFERENCE.md already had unrelated uncommitted edits from before this task started
+  (design.md cross-references, etc.); only this task's own addition (the currency.ts file-layout
+  line and its mention in the "only other implemented pieces" sentence) was staged and committed,
+  via a targeted git index update rather than staging the whole modified file, to avoid sweeping
+  in the unrelated pre-existing changes.
+
+Files Changed:
+  - lib/currency.ts (created)
+  - REFERENCE.md (modified — §4 file layout only)
+
+Verification:
+  npx tsc --noEmit (before impl)  exit 2, TS2307 Cannot find module '@/lib/currency' — matched
+  npx tsc --noEmit (after impl)   exit 0, no output
+  npm run lint                    exit 0, no output
+  npm run build                   exit 0, same seven-route table as baseline
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 2: [Domain] — validateExchangeRateInput and setExchangeRate manage a single rate per currency
+Completed: 2026-09-11
+Commit: 25ba844
+
+Summary:
+  Added validateExchangeRateInput (rejects a rate for the trip's own currency, and any
+  blank/non-numeric/non-positive rate string) and setExchangeRate (replaces any existing entry for
+  a currency, so at most one rate is ever stored per currency) to lib/currency.ts.
+
+Key Decisions:
+  None beyond the plan as written.
+
+Deviations:
+  None. Same targeted-staging approach as Task 1 was used to commit only this task's REFERENCE.md
+  line update, since the working tree still carries unrelated pre-existing uncommitted edits.
+
+Files Changed:
+  - lib/currency.ts (modified)
+  - REFERENCE.md (modified — currency.ts description line only)
+
+Verification:
+  npx tsc --noEmit (before impl)  exit 2, TS2305 no exported member 'validateExchangeRateInput' — matched
+  npx tsc --noEmit (after impl)   exit 0, no output
+  npm run lint                    exit 0, no output
+  npm run build                   exit 0, same seven-route table as baseline
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 3: [Domain] — getConvertedTotals computes a converted total and flags missing rates
+Completed: 2026-09-11
+Commit: e5f5278
+
+Summary:
+  Added getConvertedTotals to lib/currency.ts, completing the currency domain module. It sums each
+  CurrencyTotal into the trip currency (trip currency at face value, others multiplied by their
+  stored rate) and reports currencies with no stored rate via missingCurrencies/isComplete.
+
+Key Decisions:
+  None beyond the plan as written.
+
+Deviations:
+  None. First dispatch of this task's implementer hit a session-level API error mid-run before
+  writing any files (confirmed via git status/diff showing a clean, unchanged tree); treated as
+  infrastructure failure, not a failed implementation attempt, and retried as a fresh first attempt
+  per the task's own rules. Same targeted-staging approach as Tasks 1-2 used for REFERENCE.md.
+
+Files Changed:
+  - lib/currency.ts (modified)
+  - REFERENCE.md (modified — currency.ts description line only)
+
+Verification:
+  npx tsc --noEmit (before impl)  exit 2, TS2305 no exported member 'getConvertedTotals' — matched
+  npx tsc --noEmit (after impl)   exit 0, no output
+  npm run lint                    exit 0, no output
+  npm run build                   exit 0, same seven-route table as baseline
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 4: [UI] — ExchangeRateForm lets the user enter a fixed rate for a non-trip currency
+Completed: 2026-09-11
+Commit: 7c1e24b
+
+Summary:
+  Added components/ExchangeRateForm.tsx, a minimal client component with a currency select
+  (excluding the trip's own currency) and a rate input, wired to lib/currency.ts's
+  validateExchangeRateInput/setExchangeRate and lib/storage.ts's getExchangeRates/saveExchangeRates.
+
+Key Decisions:
+  None beyond the plan as written.
+
+Deviations:
+  Gate B (code-quality review) found validateExchangeRateInput had no guard against an empty
+  currency string — currently unreachable in practice (getSupportedCurrencies() always returns
+  30+ options after excluding the trip currency) but a real gap in the shared validator any future
+  caller could hit, silently persisting an ExchangeRate with currency: "". Fixed by adding an
+  empty-currency check to validateExchangeRateInput (lib/currency.ts), placed before the existing
+  same-currency check. Both gates re-run against the full diff (component + validator fix) and both
+  passed. Required a second review round on both gates.
+
+Files Changed:
+  - components/ExchangeRateForm.tsx (created)
+  - lib/currency.ts (modified — empty-currency guard)
+  - REFERENCE.md (modified — components/ file layout + "only other implemented pieces" sentence)
+
+Verification:
+  npx tsc --noEmit (before impl)  exit 2, TS2307 Cannot find module '@/components/ExchangeRateForm' — matched
+  npx tsc --noEmit (after impl)   exit 0, no output
+  npm run lint                    exit 0, no output
+  npm run build                   exit 0, same seven-route table as baseline (not yet mounted)
+
+Review Gate — Spec:    PASS (attempt 2)
+Review Gate — Quality: PASS (attempt 2)
+=====================================================================
+=====================================================================
+Task 5: [Route] — /settings renders ExchangeRateForm for the active trip
+Completed: 2026-09-11
+Commit: e09488a
+
+Summary:
+  Replaced the app/settings/page.tsx placeholder with a real route, using the same
+  useSyncExternalStore/redirect-if-no-trip pattern as /trip/edit and /expenses/new, mounting
+  ExchangeRateForm for the active trip.
+
+Key Decisions:
+  None beyond the plan as written.
+
+Deviations:
+  The implementer's REFERENCE.md edit correctly updated the settings/page.tsx entry and the
+  placeholder-list sentence, but left ExchangeRateForm.tsx's own entry saying "not yet wired to a
+  route" — now false, since this task wires it into /settings. Controller fixed this one-line
+  staleness directly before committing (a factual correction this task's own diff caused, not a new
+  decision requiring re-review).
+
+Files Changed:
+  - app/settings/page.tsx (modified — placeholder replaced with real route)
+  - REFERENCE.md (modified — settings/page.tsx entry, placeholder-list sentence, and
+    ExchangeRateForm.tsx's "wired to" note)
+
+Verification:
+  npx tsc --noEmit  exit 0, no output
+  npm run lint      exit 0, no output
+  npm run build     exit 0, same seven-route table as baseline
+  Manual browser checks (Steps 5-7): NOT PERFORMED — no browser automation tool available in this
+  environment, matching the disclosed precedent from feature 005's plan.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 6: [Route] — Home page shows spending by currency and a converted total
+Completed: 2026-09-11
+Commit: d288c77
+
+Summary:
+  Added a "Spending by currency" section to app/page.tsx, shown once at least one expense exists:
+  per-currency totals via getExpenseTotalsByCurrency, a converted total in the trip currency via
+  getConvertedTotals, and a role="status" note naming any currency still missing a rate.
+
+Key Decisions:
+  None beyond the plan as written.
+
+Deviations:
+  Both gates independently caught the same regression: the implementer's REFERENCE.md edit
+  accidentally reverted Task 5's "mounted at /settings" note on the ExchangeRateForm.tsx entry back
+  to "not yet wired to a route" (false, since Task 5 already wired it in). Fixed by restoring that
+  line to match HEAD exactly, touching nothing else. Both gates re-run and passed. Required a second
+  review round on both gates.
+
+Files Changed:
+  - app/page.tsx (modified — new currency-totals section)
+  - REFERENCE.md (modified — page.tsx entry only; the ExchangeRateForm.tsx entry ended up unchanged
+    from HEAD after the fix)
+
+Verification:
+  npx tsc --noEmit  exit 0, no output
+  npm run lint      exit 0, no output
+  npm run build     exit 0, same seven-route table as baseline
+  Manual browser checks (Step 3): NOT PERFORMED — no browser automation tool available in this
+  environment, matching the disclosed precedent from feature 005's plan.
+
+Review Gate — Spec:    PASS (attempt 2)
+Review Gate — Quality: PASS (attempt 2)
+=====================================================================

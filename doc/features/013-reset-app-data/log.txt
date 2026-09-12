@@ -1,0 +1,132 @@
+=====================================================================
+Task 1: [Data] — resetAppData clears all trip, expense, category, and exchange-rate data
+Completed: 2026-09-11
+Commit: c908ad0
+
+Summary:
+  Added resetAppData(): SaveResult to lib/storage.ts, removing all four
+  STORAGE_KEYS entries so every getter falls back to null/[] afterward
+  exactly as it does for a never-populated key. Documented in
+  REFERENCE.md's lib/storage.ts §4 and §6 entries.
+
+Key Decisions:
+  - Clears expenses/categories/exchangeRates before trip (auxiliary data
+    first, authoritative record last), mirroring lib/trip.ts's
+    submitNewTrip ordering rationale — added during /writing-plans'
+    Pass B adversarial review, not part of the original draft plan.
+
+Deviations:
+  - None. Probe error text/exit code matched the plan's prediction
+    exactly on first try.
+
+Files Changed:
+  - lib/storage.ts (modified — added resetAppData)
+  - REFERENCE.md (modified — two hunks: §4's storage.ts file-tree line,
+    §6's public API bullet list; isolated via `git add -p` from
+    unrelated pre-existing uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npx tsc --noEmit (after cleanup)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, 8-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 2: [UI] — ResetAppDataConfirm renders a warning panel with confirm/cancel actions
+Completed: 2026-09-11
+Commit: d177d05
+
+Summary:
+  Added components/ResetAppDataConfirm.tsx, a plain (no 'use client')
+  warning/confirm panel naming what a reset deletes, mirroring
+  NewTripConfirm.tsx's shape and committed styling. Not yet mounted
+  anywhere. Documented in REFERENCE.md's file tree.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - None. Probe error text/column/exit code matched the plan's
+    prediction exactly on first try.
+
+Files Changed:
+  - components/ResetAppDataConfirm.tsx (created)
+  - REFERENCE.md (modified — one hunk, the new components/ file-tree
+    entry; isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, 8-route table unchanged (component not yet mounted)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 3: [Route] — app/settings/page.tsx wires the reset action end to end
+Completed: 2026-09-11
+Commit: 087f879
+
+Summary:
+  Wired resetAppData() and ResetAppDataConfirm into app/settings/page.tsx:
+  a "Reset app data" trigger button reveals the confirm panel; confirm
+  calls resetAppData() and navigates home on success or shows a
+  role="alert" error and stays on the panel on failure; cancel hides
+  the panel with no storage write. Documented in REFERENCE.md's
+  app/settings/page.tsx entry.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - None in the code itself — the implementer's diff matched the plan's
+    Step 1 code byte-for-byte, confirmed independently by both review
+    gates.
+  - Step 5's manual browser checks (5a-5e) could NOT be performed — no
+    browser-automation tool exists in this environment, and this
+    route's UI is entirely client-rendered from localStorage (the
+    server-rendered HTML is an empty shell by design, per this app's
+    hydration-safe pattern). The implementer did the best available
+    substitute: started `npm run dev`, curled `/` and `/settings`
+    (both 200, no crash), then stopped the server. Both review gates
+    independently traced every scenario (5a-5e, including the
+    storage-failure path) by reading the real code rather than
+    trusting a report. Marked "NOT PERFORMED" in plan.md rather than
+    falsely ticked.
+  - RESIDUAL GAP flagged to the user: Step 5's manual browser checks
+    (trigger/warning, confirm deletes all four data types and returns
+    to setup with defaults intact, cancel is repeatable with no side
+    effect, resetting with some types already empty, a simulated
+    storage failure shows an error instead of a false success) should
+    be run by a human in an actual browser before treating feature 013
+    as fully verified end-to-end — the same residual-gap pattern
+    already flagged for feature 009's Tasks 5 and 6, and feature 008's
+    Task 2.
+
+Files Changed:
+  - app/settings/page.tsx (modified — added the reset flow)
+  - REFERENCE.md (modified — one hunk, the settings/page.tsx entry
+    rewrite; isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same 8-route table (no new route)
+  Manual browser checks (Step 5): NOT PERFORMED — no browser automation
+    tool available in this environment. Partial substitute: dev server
+    boot + curl checks against / and /settings. Both review gates
+    traced every scenario against the real code as the deepest
+    available substitute.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================

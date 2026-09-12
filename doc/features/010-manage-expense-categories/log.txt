@@ -1,0 +1,246 @@
+=====================================================================
+Task 1: [UI] — AddCategoryModal collects and validates a new category name
+Completed: 2026-09-12
+Commit: 448b776
+
+Summary:
+  Added components/AddCategoryModal.tsx: a 'use client' fixed-overlay
+  dialog collecting a category name, calling addCategory directly on
+  submit, mapping its failure reasons to an inline role="alert"
+  message, and reporting success via onAdded(name). Uses z-50 so it
+  paints above the app's fixed BottomNav. Documented in REFERENCE.md's
+  file tree.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - Gate B's first pass FAILED on a false-positive finding: it claimed
+    the modal's unstyled Add/Cancel buttons were inconsistent with this
+    codebase's existing .btn-primary/.btn-secondary/.btn-danger
+    conventions, citing ExpenseForm.tsx/TripEditForm.tsx/
+    TripSetupForm.tsx/NewTripConfirm.tsx as using those classes. The
+    controller independently verified via `git show HEAD:<path>` that
+    none of those files use any such class at the committed baseline —
+    the reviewer had read the working tree's separate, unrelated,
+    uncommitted dark-mode theming refactor (which does add those
+    classes) instead of HEAD, the same class of error a plan-review
+    pass made earlier in this same feature's /writing-plans stage. A
+    fresh re-review, given the exact `git show HEAD` command output and
+    explicitly warned about the working-tree/HEAD distinction, confirmed
+    the finding was baseless and passed. This is the task's one allowed
+    fix-and-re-review cycle; no code change resulted, since the modal's
+    plain buttons are genuinely consistent with the real committed
+    baseline. Gate A passed on its first attempt throughout.
+
+Files Changed:
+  - components/AddCategoryModal.tsx (created)
+  - REFERENCE.md (modified — one hunk, the new components/ file-tree
+    entry; isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, 8-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 2 — see Deviations; attempt 1 was a false-positive FAIL
+  based on misread baseline, not a real defect)
+=====================================================================
+
+=====================================================================
+Task 2: [UI] — ExpenseForm wires "+ Add New" into the category dropdown
+Completed: 2026-09-12
+Commit: 1ba4518
+
+Summary:
+  Made ExpenseForm.tsx's categories list stateful, added a "+ Add New"
+  first dropdown option, and mounted AddCategoryModal as a sibling of
+  the expense form (never nested inside it). Selecting "+ Add New"
+  opens the modal without committing to form state; adding a category
+  refreshes the list and selects the new category. Documented in
+  REFERENCE.md's ExpenseForm.tsx entry.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim, except the
+    fix described below.
+
+Deviations:
+  - Gate B's first pass FAILED on a real bug (not a false positive this
+    time): the original onChange handler detected "+ Add New" by
+    comparing e.target.value against a sentinel string
+    ("__add_new_category__"). Nothing prevented a traveller from
+    naming an actual custom category exactly that string via
+    AddCategoryModal (addCategory only rejects blank/duplicate names),
+    which would then collide with the sentinel and make that one
+    category permanently unselectable from the dropdown. Fixed by
+    switching detection to e.target.selectedIndex === 0 (the "+ Add
+    New" option is always rendered first), which cannot collide with
+    any category name since it checks position, not value. The fix
+    stayed entirely inside ExpenseForm.tsx, per the plan's negative
+    constraint against modifying lib/categories.ts.
+  - Re-running both gates after the fix (required since the fix
+    touched the same file Gate A had already reviewed) surfaced a
+    second, smaller gap: REFERENCE.md's ExpenseForm.tsx entry still
+    described the old value-based sentinel detection instead of the
+    new position-based one. The controller corrected this directly
+    (a one-clause doc edit) rather than dispatching a third automated
+    attempt, consistent with CLAUDE.md's outer-loop guidance to take
+    over manually for a fully-diagnosed, mechanical follow-up rather
+    than retry indefinitely. The correction was independently verified
+    by reading the actual code (`selectedIndex`/`ADD_NEW_CATEGORY`
+    usage) before committing.
+  - Step 5's manual browser checks (5a-5f) could NOT be performed — no
+    browser-automation tool exists in this environment. The
+    implementer did the best available substitute: found a dev server
+    already running, curled /expenses/new (200, no crash), and
+    confirmed the served JS bundle actually contains the sentinel
+    string and "+ Add New" text. Both review gates independently
+    traced every scenario against the real code as the deepest
+    available substitute. Marked "NOT PERFORMED" in plan.md rather
+    than falsely ticked.
+  - RESIDUAL GAP flagged to the user: Step 5's manual browser checks
+    (defaults still listed, "+ Add New" ordering, opening it preserves
+    the current selection, adding/selecting a unique category,
+    duplicate/blank rejection, cancel leaves nothing changed, and the
+    modal rendering above the bottom nav) should be run by a human in
+    an actual browser before treating this task as fully verified
+    end-to-end.
+
+Files Changed:
+  - components/ExpenseForm.tsx (modified — added the "+ Add New" flow)
+  - REFERENCE.md (modified — one hunk, the ExpenseForm.tsx entry
+    rewrite, including the controller's post-fix correction; isolated
+    via `git add -p` from unrelated pre-existing uncommitted
+    REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same 8-route table (no new route)
+  Manual browser checks (Step 5): NOT PERFORMED. No browser automation
+    tool available in this environment. Partial substitute: dev server
+    + curl + served-bundle grep confirming the change is live.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 2 — see Deviations; attempt 1 found a real sentinel-
+  collision bug, fixed; the re-review after the fix found a stale REFERENCE.md description,
+  corrected directly by the controller rather than a third automated attempt)
+=====================================================================
+
+=====================================================================
+Task 3: [UI] — CategoryManager lists categories with rename/delete for custom ones
+Completed: 2026-09-12
+Commit: e2193f6
+
+Summary:
+  Added components/CategoryManager.tsx: lists every category, showing
+  no actions for defaults, and inline Rename plus direct
+  no-confirmation, danger-styled Delete for custom ones. Shows an
+  empty-state message when there are no custom categories, and
+  cross-clears a stale rename/delete error when the other mutation
+  succeeds. Not yet mounted anywhere. Documented in REFERENCE.md's
+  file tree.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim (already
+    incorporated during /writing-plans review: danger-styled delete,
+    empty-state message, error cross-clearing, precise not-found/
+    invalid error-message mapping).
+
+Deviations:
+  - None. Probe error text/column/exit code matched the plan's
+    prediction exactly on first try.
+
+Files Changed:
+  - components/CategoryManager.tsx (created)
+  - REFERENCE.md (modified — one hunk, the new components/ file-tree
+    entry; isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, error text matched exactly
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, 8-route table unchanged (component not yet mounted)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 4: [Route] — app/categories/page.tsx mounts CategoryManager
+Completed: 2026-09-12
+Commit: c3bcc4f
+
+Summary:
+  Replaced app/categories/page.tsx's feature-015 placeholder with the
+  same trip-gated shell pattern every other nav-destination route
+  already uses, mounting CategoryManager with no props (categories
+  aren't trip-scoped). Documented in REFERENCE.md's
+  app/categories/page.tsx entry.
+
+Key Decisions:
+  - None beyond what the plan already specified verbatim.
+
+Deviations:
+  - None in the code itself — the implementer's diff matched the
+    plan's Step 1 code byte-for-byte, confirmed independently by both
+    review gates.
+  - Gate A's first pass FAILED, but on a pipeline-ordering
+    misunderstanding rather than a real defect: it flagged the absence
+    of a commit, a log.txt entry, and ticked PROGRESS.md/plan.md
+    checkboxes as "gaps" — all of which are the correct, expected
+    state at the point a review gate runs (before the controller
+    commits and updates persistent state, per this project's own
+    /sdd process). It also could not see the implementer's actual
+    Step 5 disclosure, since that report exists only in the
+    controller's context at this stage, not yet in any file. A fresh
+    re-review, given the pipeline ordering explicitly clarified and
+    the implementer's real Step 5 report quoted verbatim, independently
+    re-verified the disclosure's accuracy (via its own netstat/curl
+    check matching the implementer's claims almost exactly) and
+    passed. This is the same class of process confusion as Task 1's
+    HEAD-vs-working-tree mix-up, not a second instance of the same
+    issue. Gate B passed on its first attempt.
+  - Step 5's manual browser checks (5a-5e) could NOT be performed — no
+    browser-automation tool exists in this environment, and this
+    route's UI is entirely client-rendered from localStorage. The
+    implementer did the best available substitute: found a dev server
+    already running, curled /categories (200, 13KB app shell, no
+    crash), and reported honestly that none of the interactive/
+    localStorage-dependent scenarios were verified. Both review gates
+    independently traced the underlying code and, in Gate A's case,
+    independently re-ran the same curl check to confirm the disclosure
+    was accurate. Marked "NOT PERFORMED" in plan.md rather than
+    falsely ticked.
+  - RESIDUAL GAP flagged to the user: Step 5's manual browser checks
+    (empty state before any custom category exists, every category
+    listed with defaults read-only, no add-category control on this
+    page, renaming propagates to existing expenses, deleting a used
+    vs. unused category behaves correctly) should be run by a human in
+    an actual browser before treating feature 010 as fully verified
+    end-to-end — the same residual-gap pattern already flagged for
+    every UI/route task across features 008, 009, 013, and 014 in this
+    session.
+
+Files Changed:
+  - app/categories/page.tsx (modified — replaced the placeholder)
+  - REFERENCE.md (modified — one hunk, the categories/page.tsx entry
+    rewrite; isolated via `git add -p` from unrelated pre-existing
+    uncommitted REFERENCE.md edits)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same 8-route table (no new route)
+  Manual browser checks (Step 5): NOT PERFORMED — no browser automation
+    tool available in this environment. Partial substitute: dev server
+    + curl (independently re-verified by Gate A).
+
+Review Gate — Spec:    PASS (attempt 2 — see Deviations; attempt 1 was a false-positive FAIL
+  based on a pipeline-ordering misunderstanding, not a real defect)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================

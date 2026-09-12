@@ -1,11 +1,11 @@
 ---
 name: feature-spec
-description: "Analyze ONE feature spec and produce a gated BA analysis, technical specification, BDD acceptance criteria, Playwright scenario mapping, AC verification matrix, and contrarian review, written to doc/spec/{feature-name}.md. Two roles collaborate: Business Analyst (BA) and Solution Architect (SA), with a pass/fail gate between every phase. Use for feature analysis, acceptance-criteria verification, BDD generation, or specification creation. Processes exactly one feature per invocation — never batch-reads features/."
+description: "Analyze ONE feature spec and produce a gated BA analysis, technical specification, BDD acceptance criteria, Playwright scenario mapping, AC verification matrix, and contrarian review, written to doc/features/{NNN}-{slug}/spec.md. Two roles collaborate: Business Analyst (BA) and Solution Architect (SA), with a pass/fail gate between every phase. Use for feature analysis, acceptance-criteria verification, BDD generation, or specification creation. Processes exactly one feature per invocation — never batch-reads features/."
 ---
 
 # /feature-spec
 
-Turns one `features/NNN.{feature-name}.md` Gherkin spec into a reviewed, traceable design document at `doc/spec/{feature-name}.md`, ready for the implementation loop in [CLAUDE.md](../../../CLAUDE.md) to build against.
+Turns one `features/NNN.{feature-name}.md` Gherkin spec into a reviewed, traceable design document at `doc/features/{NNN}-{slug}/spec.md`, ready for the implementation loop in [CLAUDE.md](../../../CLAUDE.md) to build against.
 
 This skill **analyzes and documents**. It does not write application code, install packages, or commit. Producing the spec file is the whole deliverable.
 
@@ -23,13 +23,13 @@ This skill **analyzes and documents**. It does not write application code, insta
 
 - Do **not** `cat features/*.md`, glob-read the directory, or open a second `features/NNN.*.md` "for context."
 - The only other spec input allowed is **`features/OVERVIEW.md` sections 1–3** (Product Overview, Confirmed Requirements, Assumptions to Confirm) — the standing context every feature assumes. Read those sections only; skip section 4, which is just the file index.
-- If a neighbouring feature is genuinely a dependency, read **its already-written `doc/spec/` file** if one exists. If it doesn't, do not open the raw feature file — record the dependency as an assumption in Open Questions and move on.
+- If a neighbouring feature is genuinely a dependency, read **its already-written `doc/features/<NNN>-<slug>/spec.md`** if one exists. If it doesn't, do not open the raw feature file — record the dependency as an assumption in Open Questions and move on.
 - If the user asks for several features, or for "all of them," run this skill once per feature **sequentially**: complete and write one spec file, report it, then start the next. Never merge two features into one document or one analysis pass.
 
 ## Thin-feature shortcut
 
 A feature file with **≤2 Gherkin scenarios and no new storage key or module boundary** does not
-need a full `doc/spec/` document — the feature file itself is the plan's input. For such a feature,
+need a full `doc/features/` spec document — the feature file itself is the plan's input. For such a feature,
 emit only a short handoff note (purpose, the ≤2 business rules, and a one-line module map) and let
 the caller proceed straight to `/writing-plans` with the feature file as the source. Do not pad a
 thin feature into a 300-line document; `writing-plans` and `/sdd` carry the traceability for these.
@@ -67,8 +67,8 @@ Run in order. Each phase ends at a gate. **A gate that fails does not advance** 
 1. Resolve the argument to exactly one `features/NNN.{feature-name}.md`. If no argument was given and the conversation is ambiguous, **ask** — analysing the wrong feature wastes the whole run.
 2. Read that one file.
 3. Read `features/OVERVIEW.md` sections 1–3 only.
-4. Set `{feature-name}` to the spec filename without extension (e.g. `005.record-expense`). Output path is `doc/spec/{feature-name}.md`.
-5. If `doc/spec/{feature-name}.md` already exists, read it and treat this run as a **revision** — preserve resolved Open Questions and prior contrarian outcomes rather than regenerating them from scratch.
+4. Set `{NNN}` and `{slug}` from the feature filename (`005.record-expense` -> `005` and `record-expense`). Output path is `doc/features/{NNN}-{slug}/spec.md`; create the folder if needed.
+5. If `doc/features/{NNN}-{slug}/spec.md` already exists, read it and treat this run as a **revision** — preserve resolved Open Questions and prior contrarian outcomes rather than regenerating them from scratch.
 6. Read [`.claude/repo-profile.md`](../../repo-profile.md) § Behavioral gate — it is the source of truth for what this repo can actually verify, and what Phase 4 writes against. Do not re-derive it from `package.json`, and do not add a test dependency.
 
 ### Phase 1 — Business analysis (BA, gate G1)
@@ -160,7 +160,7 @@ Nit-picking wording is not a challenge. Aim at things that would cause the wrong
 
 ## Output document template
 
-Write `doc/spec/{feature-name}.md`, creating `doc/spec/` if needed. Use this structure:
+Write `doc/features/{NNN}-{slug}/spec.md`, creating the folder if needed. Use this structure:
 
 ```markdown
 # {NNN}. {Feature Title} — Feature Specification

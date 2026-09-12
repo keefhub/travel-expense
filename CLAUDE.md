@@ -44,12 +44,12 @@ For each feature file, in the order above, drive it through the pipeline defined
 `/writing-plans` → `/sdd`. This section only adds the per-feature status check and what to do
 on failure; it does not repeat the pipeline mechanics documented there.
 
-1. **Check status and the tree.** Run `git log --oneline --grep="^feat(<NNN>)"` to confirm the feature hasn't already been committed. Also confirm the working tree is clean, or that any dirty tracked paths are declared — `/sdd` now refuses to start otherwise, because every reviewer sees the same `git status` and undeclared changes produce wrong-baseline gate findings. If [output/error/](output/error/) has a file for this feature from a prior failed attempt, read it first — it likely explains why the last attempt didn't land.
-2. **`/feature-spec <NNN>`** → gated BA/SA spec at `doc/spec/{feature-name}.md`.
+1. **Check status and the tree.** Run `git log --oneline --grep="^feat(<NNN>)"` to confirm the feature hasn't already been committed. Also confirm the working tree is clean, or that any dirty tracked paths are declared — `/sdd` now refuses to start otherwise, because every reviewer sees the same `git status` and undeclared changes produce wrong-baseline gate findings. If [output/error/](output/error/) has a file for this feature from a prior failed attempt, read it first — it likely explains why the last attempt didn't land. Each feature's `spec.md`, `plan.md`, and `log.txt` live together in [doc/features/](doc/features/)`<NNN>-<slug>/` — see [doc/README.md](doc/README.md).
+2. **`/feature-spec <NNN>`** → gated BA/SA spec at `doc/features/{NNN}-{slug}/spec.md`.
    _(Thin-feature shortcut: if the feature file has ≤2 Gherkin scenarios and introduces no new
    storage key or module boundary, skip this step and pass the feature file straight to
    `/writing-plans` — see Cost optimization below.)_
-3. **`/writing-plans`** against that spec → `doc/spec/{feature-name}.plan.md`.
+3. **`/writing-plans`** against that spec → `doc/features/{NNN}-{slug}/plan.md`.
 4. **`/sdd <path-to-plan.md>`** to execute it. `/sdd` owns implementation (via fresh subagents per task), the two independent review gates, and every commit — this loop just reacts to its outcome:
    - **Plan reaches `**Status:** Complete`** → proceed to the next feature.
    - **`/sdd` escalates** (a task fails its two allowed attempts in a row) — it has already stopped and reported what was tried and what the review gates found. Read that report and attempt a genuine root-cause fix — not `@ts-ignore`, not `eslint-disable`, not deleting the failing code, not `--no-verify`. Resume `/sdd` on the same plan. Allow up to 3 total attempts (1 initial + 2 fix attempts) per feature. If still failing after 3 attempts, **stop the loop** and report to the user — do not proceed to the next feature.

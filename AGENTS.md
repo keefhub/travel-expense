@@ -16,7 +16,7 @@ a feature straight from its spec:
 
 1. **`/feature-spec <NNN>`** — gated BA/SA analysis of that one feature: BDD acceptance criteria,
    Playwright scenario mapping, an AC verification matrix, and a contrarian review. Writes
-   `doc/spec/{feature-name}.md`.
+   `doc/features/{NNN}-{slug}/spec.md`.
 2. **`/writing-plans`** — turns that spec into a numbered, task-by-task `plan.md` (a Files
    manifest plus a literal verification command and its exact expected output on every step),
    saved beside the spec. Plans state **contracts, not function bodies** — the implementer writes

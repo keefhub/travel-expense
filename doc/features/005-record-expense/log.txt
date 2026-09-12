@@ -1,0 +1,255 @@
+=====================================================================
+Task 1: [Domain] — getSupportedCurrencies derives a deduplicated currency list from countries
+Completed: 2026-09-11
+Commit: b84a553
+
+Summary:
+  Added getSupportedCurrencies() to lib/countries.ts, a deduplicated,
+  sorted list of currency codes derived from SUPPORTED_COUNTRIES.
+
+Key Decisions:
+  None.
+
+Deviations:
+  REFERENCE.md's working tree already carried two unrelated uncommitted
+  edits (design.md read-order references, pre-existing before this
+  session) alongside the implementer's own REFERENCE.md update. The
+  controller isolated Task 1's hunk (the countries.ts file-layout line)
+  from those two unrelated hunks before staging, committed only Task 1's
+  hunk, then restored the two unrelated hunks afterward so that
+  pre-existing work stays uncommitted rather than being silently folded
+  into this task's commit or lost.
+
+Files Changed:
+  - lib/countries.ts (modified — added getSupportedCurrencies)
+  - REFERENCE.md (modified — lib/countries.ts file-layout line updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 2: [Domain] — lib/expenses.ts form-values type and getInitialExpenseFormValues
+Completed: 2026-09-11
+Commit: da9cc73
+
+Summary:
+  Created lib/expenses.ts with ExpenseFormValues, PAYMENT_METHODS,
+  EXPENSE_SAVED_FLAG_KEY, and getInitialExpenseFormValues (defaults
+  currency to the trip's currency, date to today, everything else blank).
+
+Key Decisions:
+  None.
+
+Deviations:
+  Same REFERENCE.md pre-existing-unrelated-edit situation as Task 1. This
+  time, instead of restoring the two unrelated hunks after each commit,
+  the controller saved them to a scratch patch file
+  (scratchpad/reference-md-preexisting.patch) and reverted them from the
+  working tree entirely, so REFERENCE.md stays byte-for-byte clean
+  against HEAD for the remainder of this plan's tasks. The patch will be
+  reapplied once, after the plan's final task, instead of after every
+  task.
+
+Files Changed:
+  - lib/expenses.ts (created)
+  - REFERENCE.md (modified — lib/expenses.ts file-layout entry added)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 3: [Domain] — validateExpenseForm rejects invalid input and warns on out-of-range dates
+Completed: 2026-09-11
+Commit: 6e20c27
+
+Summary:
+  Added ExpenseValidationResult and validateExpenseForm to
+  lib/expenses.ts. Amount must be a positive number; currency, category,
+  and paymentMethod are each validated by closed-set membership; location
+  is required; a date outside the trip range produces a non-blocking
+  warning only, with strict boundary exclusion and no future-date
+  restriction.
+
+Key Decisions:
+  None beyond what the plan specified. Gate B raised one advisory style
+  nit (the trip param's inline { startDate; endDate } type could be
+  Pick<Trip, "startDate" | "endDate"> instead) — not applied, since the
+  inline shape matches the plan's own design element signature (spec
+  TS-005-05) verbatim; changing it would be a deviation from the gated
+  spec for a cosmetic preference.
+
+Deviations:
+  None.
+
+Files Changed:
+  - lib/expenses.ts (modified — added getSupportedCurrencies import,
+    ExpenseValidationResult, validateExpenseForm)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1) — explicitly confirmed the
+  closed-set membership checks for currency/category/paymentMethod are
+  real set-membership checks, not just blank-string checks (this is what
+  an earlier plan draft got wrong, per doc/spec/005.record-expense.plan.md
+  Task 3's "Deviation from spec TS-005-05" note).
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 4: [Domain] — submitExpense validates, appends, and saves a new expense
+Completed: 2026-09-11
+Commit: 1f4c8e4
+
+Summary:
+  Added SubmitExpenseResult and submitExpense to lib/expenses.ts,
+  completing the domain module. Validates first (short-circuiting to
+  "invalid" without any storage call on a blocking error, while a
+  warnings-only result still saves), builds the Expense object (trimmed
+  location, description omitted entirely when blank, generated id,
+  parsed amount), appends to the existing list, and saves via injected
+  deps.
+
+Key Decisions:
+  None beyond what the plan specified.
+
+Deviations:
+  None.
+
+Files Changed:
+  - lib/expenses.ts (modified — added SaveResult/Expense imports,
+    SubmitExpenseResult, submitExpense)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 5: [UI] — ExpenseForm renders all seven fields with live trip-period warning
+Completed: 2026-09-11
+Commit: beaab54
+
+Summary:
+  Added components/ExpenseForm.tsx, rendering all seven expense fields
+  with a live trip-period date warning and dispatching on submitExpense's
+  three-way result (invalid/storage-error/saved).
+
+Key Decisions:
+  None beyond what the plan specified.
+
+Deviations:
+  Gate B (code-quality review) found that the plan's original code called
+  getAllCategories() directly in the render body, which reads and
+  JSON-parses localStorage on every keystroke (every field's onChange
+  triggers a re-render). Fixed by wrapping the call in a lazy useState
+  initializer (`const [categories] = useState(() => getAllCategories());`),
+  computed once on mount, matching the same idiom already used for
+  `values` one line above. Both gates re-ran clean after the fix. plan.md's
+  Task 5 code block and design notes were updated to match the corrected
+  implementation.
+
+Files Changed:
+  - components/ExpenseForm.tsx (created)
+  - REFERENCE.md (modified — components/ list entry added)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 2 — re-run required after the Gate B
+  fix touched logic Gate A had already reviewed)
+Review Gate — Quality: FAIL (attempt 1) -> PASS (attempt 2, after the
+  getAllCategories() lazy-init fix)
+=====================================================================
+Task 6: [Route] — /expenses/new loads the trip, redirects if none, and renders ExpenseForm
+Completed: 2026-09-11
+Commit: e48f9ca
+
+Summary:
+  Replaced app/expenses/new/page.tsx's feature-015 placeholder with a
+  hydration-safe route mirroring /trip/edit's pattern, redirecting home
+  when no trip exists and otherwise mounting ExpenseForm.
+
+Key Decisions:
+  None beyond what the plan specified.
+
+Deviations:
+  Steps 5-6 (manual browser checks: no-trip redirect, and the full
+  AC-005-01..10 scenario matrix) were NOT PERFORMED — no browser
+  automation tool is available in this environment, matching the
+  precedent already disclosed in feature 003's plan (doc/spec/
+  003.create-new-trip.plan.md, Tasks 4-5). Static review (both gates
+  traced the redirect/render logic by hand against the real committed
+  code) stands in, but is not a substitute for an actual browser run.
+
+Files Changed:
+  - app/expenses/new/page.tsx (modified — placeholder replaced)
+  - REFERENCE.md (modified — file-layout entry updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 7: [Route] — app/page.tsx shows a one-time success message after a saved expense
+Completed: 2026-09-11
+Commit: e83886c
+
+Summary:
+  Added a second useSyncExternalStore-backed store to app/page.tsx that
+  reads and clears EXPENSE_SAVED_FLAG_KEY from sessionStorage on first
+  read, showing "Expense saved." (role="status") once after a successful
+  expense save.
+
+Key Decisions:
+  None beyond what the plan specified (the useSyncExternalStore-over-
+  useEffect decision itself was already made and documented while
+  drafting the plan, before this task's implementation began).
+
+Deviations:
+  Gate B (code-quality review) found the sessionStorage read/clear had
+  no try/catch, inconsistent with this repo's lib/storage.ts safe-
+  accessor convention — an unguarded throw during getSnapshot would
+  crash the whole home page on every visit, not just ones following a
+  saved expense. Fixed by wrapping the read/clear in try/catch,
+  degrading to no message shown on any storage error. Gate A separately
+  flagged (non-blocking) that REFERENCE.md's app/page.tsx line didn't
+  yet mention the new behavior; fixed in the same pass. Both gates
+  re-ran clean after both fixes. plan.md's Task 7 code block was updated
+  to match.
+
+  Step 3 (manual browser check: success message shows once then clears)
+  was NOT PERFORMED — no browser automation tool is available in this
+  environment, matching the precedent already disclosed in feature 003's
+  plan and this plan's own Task 6.
+
+Files Changed:
+  - app/page.tsx (modified — createSavedMessageStore added, wired into
+    Home(), success message rendered)
+  - REFERENCE.md (modified — app/page.tsx entry updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 2 — re-run required after the Gate B
+  fix touched logic Gate A had already reviewed)
+Review Gate — Quality: FAIL (attempt 1) -> PASS (attempt 2, after the
+  sessionStorage try/catch fix)
+=====================================================================

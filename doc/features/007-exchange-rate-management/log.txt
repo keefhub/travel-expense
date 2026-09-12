@@ -1,0 +1,157 @@
+=====================================================================
+Task 1: [Domain] — getCurrenciesNeedingRates derives the non-trip currencies in use
+Completed: 2026-09-11
+Commit: e31f994
+
+Summary:
+  Added getCurrenciesNeedingRates(expenses, tripCurrency) to
+  lib/currency.ts, the sorted, deduplicated set of non-trip currencies
+  used in expenses.
+
+Key Decisions:
+  A doc comment was added (during plan review) clarifying that despite
+  the name, the function does NOT exclude currencies that already have
+  a saved rate — the currency selector needs the full in-use set so an
+  existing rate can still be found and edited.
+
+Deviations:
+  Gate B noted a cosmetic-only inconsistency: this function uses plain
+  Array.sort() while the sibling getExpenseTotalsByCurrency in the same
+  file uses .sort((a, b) => a.currency.localeCompare(b.currency)).
+  Verified empirically to produce identical output for this app's
+  actual data (uppercase ASCII ISO 4217 currency codes) - not fixed,
+  since it's purely cosmetic with zero functional difference.
+
+Files Changed:
+  - lib/currency.ts (modified — added getCurrenciesNeedingRates)
+  - REFERENCE.md (modified — lib/currency.ts entry updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 2: [UI] — ExchangeRateForm scopes currency choices to currencies in use
+Completed: 2026-09-11
+Commit: afe5aab
+
+Summary:
+  Changed ExchangeRateForm's currency dropdown source from every
+  supported currency to getCurrenciesNeedingRates(getExpenses(),
+  trip.currency), and added an early-return empty state when that set
+  is empty.
+
+Key Decisions:
+  The empty-state early return was deliberately placed after all four
+  useState calls, not before — an earlier draft placed it before them
+  and failed react-hooks/rules-of-hooks (verified empirically while
+  drafting the plan).
+
+Deviations:
+  None. Gate B noted (non-blocking) that getCurrenciesNeedingRates now
+  re-reads localStorage on every render including keystrokes in
+  rateInput - a minor recompute cost, not a correctness issue, and
+  superseded by Task 3's restructuring anyway.
+
+Files Changed:
+  - components/ExchangeRateForm.tsx (modified — currency source +
+    empty state)
+  - REFERENCE.md (modified — ExchangeRateForm.tsx entry updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 3: [UI] — RateInput shows and edits an existing rate per currency
+Completed: 2026-09-11
+Commit: 2644276
+
+Summary:
+  Extracted RateInput as a child component of ExchangeRateForm, mounted
+  with key={currency} so switching currencies remounts it and its
+  lazy-initialized rateInput reads the fresh currency's existing saved
+  rate (or blank if none). A successful save no longer clears the
+  field.
+
+Key Decisions:
+  None beyond what the plan specified.
+
+Deviations:
+  Step 5 (manual browser check: switching currencies shows the right
+  rate, updating replaces not duplicates) was NOT PERFORMED — no
+  browser automation tool is available in this environment, matching
+  established precedent.
+
+Files Changed:
+  - components/ExchangeRateForm.tsx (modified — RateInput extraction)
+  - REFERENCE.md (modified — ExchangeRateForm.tsx entry updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 4: [Route] — Settings page displays the trip currency
+Completed: 2026-09-11
+Commit: 766106c
+
+Summary:
+  Added a "Trip currency: {code}" display line to app/settings/page.tsx,
+  above the exchange-rate form.
+
+Key Decisions:
+  Gate B found the plan's originally-specified className ("px-4" only)
+  didn't match the identical label's existing styling in
+  TripEditForm.tsx (font-mono text-sm text-[var(--muted)], per
+  design.md's documented typography rules for currency/numeric values
+  and helper text). Applied directly by the controller (one-line
+  className fix, re-verified clean) rather than a full fix-and-re-review
+  subagent cycle, given the triviality of the change.
+
+Deviations:
+  Step 5 (manual browser check: the trip currency is visible) was NOT
+  PERFORMED — no browser automation tool is available in this
+  environment, matching established precedent.
+
+  This task's completion was significantly delayed by unrelated shared
+  working-tree state: an unowned, broken dark-mode/theming refactor
+  (components/DateField.tsx, ThemeToggle.tsx, lib/theme.ts, and edits
+  across most of the UI layer) left the repo-wide build failing
+  (npx tsc --noEmit exit 2) for an extended period, discovered while
+  this task's implementer ran Step 2. The controller declined to commit
+  through the failure per this plan's own "never commit on a failing
+  build" rule, coordinated with three peer sessions (travel-expense-d3,
+  -1b, -2c) also working in this same unisolated working directory to
+  identify the owner (none claimed it), and held until another session
+  (travel-expense-2c, authorized by its own user) reversibly stashed
+  the unowned files (`git stash push -u` with an explicit pathspec,
+  reversible via `git stash pop`) to restore a green build. The
+  controller independently re-verified the build and its own diff's
+  isolation before resuming, rather than trusting the peer's report.
+  This session's own multi-feature loop was also stopped at the same
+  point pending user guidance on running one session per feature rather
+  than several in parallel against one unisolated working directory —
+  see the plan's Completion Summary for the full account.
+
+Files Changed:
+  - app/settings/page.tsx (modified — trip-currency display line)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, one Advisory finding applied
+  directly by the controller rather than a fix-and-re-review cycle)
+=====================================================================

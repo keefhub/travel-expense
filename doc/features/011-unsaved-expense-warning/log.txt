@@ -1,0 +1,115 @@
+=====================================================================
+Task 1: [UI] — useUnsavedChangesWarning warns on refresh/close while dirty
+Completed: 2026-09-11
+Commit: 5492111
+
+Summary:
+  Created hooks/useUnsavedChangesWarning.ts, a new hooks/ directory
+  (first in this repo). Registers a window beforeunload listener only
+  while isDirty is true, guarded by an isDiscardingRef that Task 2 will
+  set before a confirmed in-app navigation.
+
+Key Decisions:
+  isDiscardingRef is set up now but unused within this task's own effect
+  — deliberate groundwork for Task 2's fix to a double-confirmation-
+  dialog bug found during plan review (not by any automated check): a
+  confirmed in-app navigation triggers a real document unload via
+  window.location.assign, which would otherwise re-trigger this
+  still-attached beforeunload listener and show a second native dialog
+  right after the user already confirmed the app's own custom one.
+
+Deviations:
+  Same REFERENCE.md pre-existing-unrelated-edit handling as feature 005's
+  plan: isolated this task's own hunk (the new hooks/ entry) from two
+  unrelated pre-existing uncommitted design.md-reference edits before
+  staging/committing, then restored those two hunks afterward so they
+  remain uncommitted, unchanged from before this task.
+
+Files Changed:
+  - hooks/useUnsavedChangesWarning.ts (created)
+  - REFERENCE.md (modified — hooks/ file-layout entry added)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+Task 2: [UI] — useUnsavedChangesWarning intercepts in-app navigation while dirty
+Completed: 2026-09-11
+Commit: 30097bb
+
+Summary:
+  Added a click-interception effect to useUnsavedChangesWarning. While
+  dirty, a capture-phase document click listener intercepts a same-tab,
+  same-origin click on an in-app anchor pointing to a different
+  pathname, shows a confirm prompt, and on confirm sets a discarding
+  flag before navigating via window.location.assign.
+
+Key Decisions:
+  None beyond what the plan specified for the mainline design; two
+  guards were added during review (see Deviations).
+
+Deviations:
+  Gate B (code-quality review) found two gaps by cross-referencing
+  Next.js's own <Link> click handler (node_modules/next/dist/client/
+  link.js): the modifier-key guard was missing event.altKey, and there
+  was no check for an anchor's download attribute. Both native browser
+  gestures (Alt+click save/download, an explicit download link) would
+  otherwise have been silently hijacked into an app navigation while
+  the form was dirty. Fixed by adding `|| event.altKey` to the guard and
+  a `download`-attribute early return. Both gates re-ran clean after the
+  fix. plan.md's Task 2 code block was updated to match.
+
+Files Changed:
+  - hooks/useUnsavedChangesWarning.ts (modified — click-interception
+    effect added)
+  - REFERENCE.md (modified — hook entry updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 2 — re-run required after the Gate B
+  fix touched logic Gate A had already reviewed)
+Review Gate — Quality: FAIL (attempt 1) -> PASS (attempt 2, after the
+  altKey/download-attribute fix)
+=====================================================================
+Task 3: [UI] — ExpenseForm tracks dirtiness and calls the warning hook
+Completed: 2026-09-11
+Commit: bf32c68
+
+Summary:
+  Wired the completed useUnsavedChangesWarning hook into ExpenseForm.
+  Dirtiness is computed by comparing current values against a
+  useState-captured snapshot taken at mount, avoiding a useRef (which
+  this repo's react-hooks/refs ESLint rule rejects when read during
+  render).
+
+Key Decisions:
+  None beyond what the plan specified.
+
+Deviations:
+  Step 7 (the full AC-011-01..11 manual browser matrix) was NOT
+  PERFORMED — no browser automation tool is available in this
+  environment, matching the precedent already disclosed in features 003,
+  005, and this plan's own Task 3 instructions to check for a tool
+  before defaulting to skip. Both gates traced every relevant code path
+  by hand against the real committed code as a substitute, but that is
+  not equivalent to an actual browser run.
+
+Files Changed:
+  - components/ExpenseForm.tsx (modified — dirty-tracking + hook call)
+  - REFERENCE.md (modified — ExpenseForm.tsx entry updated)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, seven-route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================

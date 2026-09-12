@@ -1,0 +1,246 @@
+=====================================================================
+Task 1: [Domain] — submitNewTrip clears expenses and exchange rates before saving a new trip
+Completed: 2026-09-10
+Commit: a3ea3a4
+
+Summary:
+  Extracted buildAndSaveTrip from submitTripSetup's body (behavior-
+  preserving) and added submitNewTrip, which validates, clears expenses
+  and exchange rates (returning a storage error before ever touching the
+  trip record if either clear fails), then delegates to buildAndSaveTrip.
+
+Key Decisions:
+  - None beyond what the spec/plan already specified verbatim.
+
+Deviations:
+  - None. Both the TS2305 probe error and the full implementation matched
+    the plan's pre-verified expectations exactly.
+
+Files Changed:
+  - lib/trip.ts (modified — extracted buildAndSaveTrip, added
+    submitNewTrip)
+  - REFERENCE.md (modified — lib/trip.ts file-tree entry now mentions
+    submitNewTrip)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, exact expected TS2305 line
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npx tsc --noEmit (after cleanup)   exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 2: [UI] — TripSetupForm accepts an injectable submit function
+Completed: 2026-09-10
+Commit: 7cd73f1
+
+Summary:
+  Added an optional `submit` prop to TripSetupForm, defaulting to
+  submitTripSetup, so it can be reused for the new-trip flow (Task 4)
+  without a second near-duplicate form component. app/page.tsx's
+  existing call site needs no change.
+
+Key Decisions:
+  - None beyond what the spec/plan already specified verbatim.
+
+Deviations:
+  - Gate B flagged one minor style nit (PASS verdict, non-blocking): the
+    implementer added `import type { SaveResult } from "@/lib/storage";`
+    as a separate line rather than merging it into the existing
+    `import { saveTrip } from "@/lib/storage";` line, which was both the
+    plan's literal instruction and this codebase's established pattern
+    (components/TripEditForm.tsx merges value+type imports from the same
+    module). The controller fixed this directly (merged into
+    `import { saveTrip, type SaveResult } from "@/lib/storage";`),
+    re-verified npx tsc --noEmit and npm run lint both still pass, before
+    committing.
+
+Files Changed:
+  - components/TripSetupForm.tsx (modified — added the submit prop)
+  - REFERENCE.md (modified — TripSetupForm.tsx file-tree entry documents
+    the new prop)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, exact expected TS2322 lines
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+  (post-fix) npx tsc --noEmit        exit 0, no output
+  (post-fix) npm run lint            exit 0, no output
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, with one non-blocking style note — fixed by controller)
+=====================================================================
+
+=====================================================================
+Task 3: [UI] — NewTripConfirm renders a warning with confirm/cancel actions
+Completed: 2026-09-10
+Commit: 54009b6
+
+Summary:
+  Added components/NewTripConfirm.tsx: a plain (no 'use client') component
+  taking onConfirm/onCancel callback props, warning that the current trip,
+  its expenses, and its exchange rates will be deleted, with a
+  danger-styled confirm button and a plain cancel button. Not yet wired
+  into any route.
+
+Key Decisions:
+  - None beyond what the spec/plan already specified verbatim.
+
+Deviations:
+  - Gate B raised one non-blocking observation (PASS verdict): the
+    warning `<p>` uses `role="alert"`, but every other use of that role
+    in this codebase (TripSetupForm/TripEditForm) is reserved for
+    conditionally-rendered validation/save-error text, not always-present
+    static copy. The code matches the plan's literal specified content
+    exactly, so this was left as-is rather than deviating from the
+    reviewed plan; noted here for future reference if this component's
+    markup is revisited.
+
+Files Changed:
+  - components/NewTripConfirm.tsx (created)
+  - REFERENCE.md (modified — added NewTripConfirm.tsx to the file tree
+    and the "only other implemented pieces" sentence)
+
+Verification:
+  npx tsc --noEmit (probe present)   exit 2, exact expected TS2307 line
+  npx tsc --noEmit (after impl)      exit 0, no output
+  npm run lint                       exit 0, no output
+  npm run build                      exit 0, route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, with one non-blocking observation, not acted on)
+=====================================================================
+
+=====================================================================
+Task 4: [Route] — /trip/new loads the trip, gates behind confirmation, and creates the replacement
+Completed: 2026-09-10
+Commit: 793776b
+
+Summary:
+  Added app/trip/new/page.tsx: mirrors /trip/edit's useSyncExternalStore
+  hydration-safe pattern, redirects to "/" via router.replace when no
+  trip exists, shows NewTripConfirm first, and only after confirming
+  renders TripSetupForm wired to a closure that adapts submitNewTrip
+  (adding saveExpenses/saveExchangeRates to the deps TripSetupForm
+  already supplies) to TripSetupForm's submit prop signature.
+
+Key Decisions:
+  - None beyond what the spec/plan already specified, once corrected
+    (see Deviations).
+
+Deviations:
+  - REAL BUG found and fixed: the plan's original Step 1 code imported
+    `saveTrip` (from lib/storage) and `getCurrencyForCountry` (from
+    lib/countries) directly into the route file, but both were dead
+    code — TripSetupForm's own handleSubmit already builds
+    { getCurrencyForCountry, saveTrip } and passes it as the `deps`
+    parameter to the injected `submit` closure, which only needs to
+    spread that `deps` and add saveExpenses/saveExchangeRates. The
+    implementer's own `npm run lint` run caught this (2
+    @typescript-eslint/no-unused-vars warnings, exit 0 but not the
+    clean "no output" the step expected). The controller removed both
+    unused imports directly, re-verified npx tsc --noEmit / npm run
+    lint / npm run build all clean, then had both review gates
+    re-verify against the corrected file. plan.md's Step 1 code block
+    was updated to match what actually shipped.
+  - Same environmental gap as feature 002's route tasks: no browser-
+    automation tool exists here, so Steps 5-6 (no-trip redirect, and
+    the full confirm/cancel/validation/storage-failure matrix covering
+    AC-003-02 through AC-003-07) could NOT be performed. Marked "NOT
+    PERFORMED" in plan.md rather than falsely ticked. Both review gates
+    independently traced every scenario by hand against the real
+    committed code (including the data-flow chain from TripSetupForm's
+    deps through the submit closure into submitNewTrip) as the deepest
+    available substitute.
+  - RESIDUAL GAP flagged to the user: Steps 5-6's manual browser checks
+    — covering the entire destructive path this feature exists to
+    deliver (BR-003-05/06: actually clearing expenses and exchange
+    rates) — should be run by a human in an actual browser before
+    treating feature 003 as fully verified end-to-end.
+
+Files Changed:
+  - app/trip/new/page.tsx (created)
+  - REFERENCE.md (modified — added the trip/new/page.tsx file-tree
+    entry, updated TripSetupForm.tsx and NewTripConfirm.tsx to "003,
+    complete" with their actual wiring, updated the placeholder-routes
+    sentence to mention /trip/new)
+
+Verification:
+  npx tsc --noEmit    exit 0, no output
+  npm run lint        exit 0, no output (after removing 2 unused imports;
+                       2 warnings before the fix)
+  npm run build       exit 0, route table includes all seven routes
+  Manual browser checks (Steps 5-6): NOT PERFORMED — no browser
+    automation tool available in this environment.
+
+Review Gate — Spec:    PASS (attempt 1, re-verified against corrected file, with an explicit
+                        "untestable without browser" list recorded)
+Review Gate — Quality: PASS (attempt 1, re-verified against corrected file, confirmed lint
+                        genuinely clean)
+=====================================================================
+
+=====================================================================
+Task 5: [UI] — TripEditForm links to the new-trip flow
+Completed: 2026-09-10
+Commit: c9552e9
+
+Summary:
+  Added a plain "Start a new trip" <Link href="/trip/new"> to
+  TripEditForm.tsx's form, after the "Save changes" submit button. This
+  was the plan's final task.
+
+Key Decisions:
+  - None beyond what the plan specified verbatim — smallest task in the
+    plan (one import, one JSX element).
+
+Deviations:
+  - Same environmental gap as Tasks 3/4 and as feature 002's equivalent
+    tasks: no browser-automation tool exists here, so Step 5 (the manual
+    click-through: visit /trip/edit, click the link, confirm it lands on
+    /trip/new showing the warning) could NOT be executed interactively.
+    Marked "NOT PERFORMED" in plan.md rather than falsely ticked.
+  - Compensated with static verification: both review gates confirmed
+    the link is plain (no danger styling, correctly distinguishing it
+    from NewTripConfirm's destructive confirm button), targets a route
+    file that provably exists (app/trip/new/page.tsx), uses next/link
+    (not a plain <a>), and is placed correctly inside the form without
+    any risk of being confused with the submit button (different HTML
+    elements, no shared styling).
+
+Files Changed:
+  - components/TripEditForm.tsx (modified — added the Link)
+  - REFERENCE.md (modified — TripEditForm.tsx marked "003, complete"
+    with the new link described)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output
+  npm run build      exit 0, same seven-route table as Task 4
+  Manual click-through check (Step 5): NOT PERFORMED — no browser
+    automation tool available in this environment.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+RESIDUAL GAP ACROSS THE WHOLE PLAN (see Tasks 4 and 5 above): this environment has no
+browser-automation tool, so none of the plan's manual browser-based checks were executed against a
+real browser and real localStorage — specifically Task 4's Steps 5-6 (no-trip redirect, and the full
+confirm/cancel/validation/storage-failure matrix covering AC-003-02 through AC-003-07, including the
+one check that actually confirms expenses and exchange rates get cleared) and Task 5's Step 5 (the
+click-through from trip settings). Every one of these scenarios was independently traced by at least
+two review-gate subagents against the actual committed code and documented React/Next.js/ESLint
+semantics, and all passed that static scrutiny — including a real bug (two dead imports causing lint
+warnings, traced back to a genuine mistake in this plan's own Step-1 code) that static review DID
+catch and get fixed before commit. This is the best verification available in this environment, but
+it is not a substitute for a human running through the app in an actual browser. Recommended before
+considering feature 003 fully done: a human (or an environment with browser automation) should run
+Task 4's Steps 5-6 and Task 5's Step 5 against `npm run dev` at least once — Task 4 Step 6b in
+particular, since it is the only check that verifies expenses/exchange-rates are actually cleared,
+which is the entire reason this feature exists.
+=====================================================================

@@ -1,7 +1,7 @@
 # AI Workflow Cost Optimization — Implementation Plan
 
 **Status:** Complete
-**Source:** `docs/superpowers/specs/2026-09-12-ai-workflow-optimization-design.md`
+**Source:** `doc/workflow/ai-workflow-optimization.md`
 **Goal:** Cut per-feature token and wall-clock cost of the
 `/feature-spec` → `/writing-plans` → `/sdd` pipeline by roughly 40%, while making UI behavior
 machine-verifiable for the first time and making review gates independent of the code they review.
@@ -536,7 +536,7 @@ Commit message format — Conventional Commits. This plan has no feature number,
     - one behavior per bullet, derived from `git diff --staged`
     - not a restatement of the task title
 
-    Spec: docs/superpowers/specs/2026-09-12-ai-workflow-optimization-design.md
+    Spec: doc/workflow/ai-workflow-optimization.md
 
 Never commit on a failing lint, typecheck, or build.
 
