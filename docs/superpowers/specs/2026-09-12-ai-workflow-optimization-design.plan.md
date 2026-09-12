@@ -8,26 +8,25 @@ machine-verifiable for the first time and making review gates independent of the
 
 **Revised:** 2026-09-12 — after Passes A.5/B/C. Every `grep` assertion below was re-run against the
 real tree; four in the first draft were unreachable or targeted text that does not exist. The
-compiler red step is now **kept** (see Task 7), reversing the first draft and design §3.
+compiler red step is now **kept** (see Task 6), reversing the first draft and design §3.
 
 **Architecture:**
-Four changes stack in dependency order. First, a cost baseline is extracted from the eleven
-existing run logs, so the 40% claim is falsifiable. Second, Playwright becomes a proven capability
-— nothing references it until a spec actually passes. Third, repo-specific facts move into
+Three changes stack in dependency order. First, Playwright becomes a proven capability — nothing
+references it until a spec actually passes. Second, repo-specific facts move into
 `.claude/repo-profile.md` and a sliced context packet; the skills **cite** that profile rather than
-inlining its rules. Fourth, the three skills are edited surgically to consume those artifacts.
+inlining its rules. Third, the three skills are edited surgically to consume those artifacts.
 
 **Tech Stack:** Next.js 16.3.3 (App Router), React 19.2.8, TypeScript 5 (`strict`), Tailwind CSS 4.
 Data: browser local storage — no backend. Verification: `npm run lint`, `npx tsc --noEmit`,
-`npm run build`, and — from Task 2 onward — `npx playwright test`.
+`npm run build`, and — from Task 1 onward — `npx playwright test`.
 
-> **Execution constraint.** Tasks 6–11 edit the skills that would execute this plan. Run this plan
+> **Execution constraint.** Tasks 5–10 edit the skills that would execute this plan. Run this plan
 > **directly, not through `/sdd`**, and treat every skill edit as taking effect on the *next*
 > invocation, not the current one. See the design doc's Validation section.
 
 > **Layer tags** here are `[Meta]`, `[Tooling]`, `[Config]`, `[Skill]`, `[Docs]` rather than
 > `Types/Data/Domain/UI/Route`, because no task touches `app/`, `lib/`, or `components/`. `/sdd`
-> permits an adapted heading shape. Task 5 defines what such tags receive as context.
+> permits an adapted heading shape. Task 4 defines what such tags receive as context.
 
 > **Verification without a compiler.** Most tasks edit Markdown. Their red→green loop runs through
 > `grep -c` with exact counts, **all re-measured against the tree on 2026-09-12**. Where a count is
@@ -41,45 +40,8 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 1: [Meta] — Capture the cost baseline before anything changes
 
-**Files**
-- create: `docs/superpowers/specs/2026-09-12-baseline.md`
-- test: `grep -c` assertions below
-
-> Without this the 40% target is unfalsifiable: all 15 features are committed, so the "next real
-> change" that would supply an after-measurement may never come. The eleven `doc/spec/*.log.txt`
-> files already carry per-task gate verdicts and attempt counts.
-
-- [ ] **Step 1 — Confirm the source data exists.**
-      `ls doc/spec/*.log.txt | wc -l`
-      Expected: `11`.
-
-- [ ] **Step 2 — Extract per-feature artifact sizes.**
-      `wc -c doc/spec/*.md | sort -n`
-      Record spec and plan bytes per feature in the baseline table.
-
-- [ ] **Step 3 — Extract gate outcomes.**
-      `grep -c 'Review Gate' doc/spec/*.log.txt`
-      and `grep -c 'attempt 2' doc/spec/*.log.txt`
-      Record total gate runs and how many needed a second attempt.
-
-- [ ] **Step 4 — Count the documented false positives.**
-      `grep -ci 'false.positive' doc/spec/*.log.txt`
-      Expected: `010` reports `2` or greater. These are the serial cycles the gate baseline
-      contract (Task 7) is meant to eliminate; they are the primary before-number.
-
-- [ ] **Step 5 — Write the baseline document** with three tables: artifact bytes per feature, gate
-      runs and second attempts per feature, and documented false positives per feature. State
-      explicitly that token counts were not recorded by the pipeline and are inferred from bytes.
-
-- [ ] **Step 6 — Verify.**
-      `grep -c '^| ' docs/superpowers/specs/2026-09-12-baseline.md`
-      Expected: `20` or greater (three tables of rows).
-
----
-
-### Task 2: [Tooling] — Playwright installs and runs Chromium in this environment
+### Task 1: [Tooling] — Playwright installs and runs Chromium in this environment
 
 **Files**
 - modify: `package.json` (add `@playwright/test` devDependency, add `test:e2e` script)
@@ -89,12 +51,17 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
   `npm run lint`
 
 > This task proves the harness runs **before** anything depends on it. If Chromium cannot launch
-> here, stop the plan and report — Tasks 3, 8, 9 and 10 all assume a working Playwright.
+> here, stop the plan and report — Tasks 2, 7, 8 and 9 all assume a working Playwright.
 
-- [ ] **Step 1 — Confirm the starting state.**
-      `npx playwright --version`
-      Expected: non-zero exit; npm reports the package is not installed (exact wording varies by
-      npm version — any "not found" / "could not determine executable" message satisfies this).
+- [x] **Step 1 — Confirm the starting state.**
+      `grep -c playwright package.json` → Expected: `0`.
+      `ls node_modules/.bin | grep -ci playwright` → Expected: `0`.
+
+      > Corrected during execution. This step originally ran `npx playwright --version` expecting a
+      > "not installed" error. `npx` **downloads a missing package to answer the query** — it
+      > printed `Version 1.63.0` and exited 0 on a repo with no Playwright dependency at all. An
+      > `npx <pkg>` invocation can never prove absence; only the project's own manifest and
+      > `node_modules/.bin` can. Both verified `0` before Step 2.
 
 - [ ] **Step 2 — Install the test runner.**
       `npm install -D @playwright/test`
@@ -127,19 +94,20 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 3: [Tooling] — A Playwright spec passes against committed feature 010
+### Task 2: [Tooling] — A Playwright spec passes against committed feature 010
 
 **Files**
 - create: `e2e/010-categories.spec.ts`
 - test: `npx playwright test e2e/010-categories.spec.ts`
 
-> Feature 010's `log.txt` records exactly which browser checks were never performed. This spec
-> closes that documented gap, so a pass here is evidence the harness covers real behavior.
+> Feature 010 (manage expense categories) is a good proving ground: it is committed, its UI is
+> entirely client-rendered from local storage, and none of its behavior is reachable by `tsc`.
+> A pass here is evidence the harness covers behavior the compiler structurally cannot see.
 
 > **Seed from the first step.** `app/categories/page.tsx` calls `router.replace("/")` when
 > `getTrip()` returns `null`, rendering `null` until then. An unseeded spec cannot reach the
 > heading — so the first draft's "navigate and assert the heading, expect 1 passed" step was
-> known-false. Seeding is part of Step 1, not a later repair.
+> known-false. Seeding belongs in the first spec written, not in a later repair step.
 
 - [ ] **Step 1 — Read the real storage keys.** Read `REFERENCE.md` §6 and record the exact key
       names for the active trip and the category list. Do not guess them.
@@ -153,7 +121,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       Expected: exit 0, output containing `1 passed`.
       If this fails, the seeded keys are wrong — re-read §6 rather than changing the assertion.
 
-- [ ] **Step 4 — Cover the gap 010's log recorded as NOT PERFORMED.** Add tests asserting:
+- [ ] **Step 4 — Cover behavior only a browser can reach.** Add tests asserting:
       default categories are listed and show no rename/delete action; a custom category added via
       the UI appears with both actions; a blank name is rejected.
 
@@ -169,7 +137,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 4: [Config] — `.claude/repo-profile.md` holds this repo's verification facts
+### Task 3: [Config] — `.claude/repo-profile.md` holds this repo's verification facts
 
 **Files**
 - create: `.claude/repo-profile.md`
@@ -206,7 +174,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 5: [Config] — Context packet split into a shared core plus five layer slices
+### Task 4: [Config] — Context packet split into a shared core plus five layer slices
 
 **Files**
 - modify: `memories/repo/travel-expense-context.md` (becomes the shared core)
@@ -218,7 +186,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > so this stale line has been feeding wrong project state to every implementer and reviewer.
 
 > **Five slices, not four.** `writing-plans` defines the chain as Types → Data → Domain → UI →
-> Route. A `[Types]` task with no slice makes Task 7's paste rule unsatisfiable on first use.
+> Route. A `[Types]` task with no slice makes Task 6's paste rule unsatisfiable on first use.
 
 - [ ] **Step 1 — Confirm the stale claim is present.**
       `grep -c 'feature 005 complete; 006 not yet started' memories/repo/travel-expense-context.md`
@@ -251,7 +219,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 6: [Skill] — `sdd` gains the clean-tree precondition
+### Task 5: [Skill] — `sdd` gains the clean-tree precondition
 
 **Files**
 - modify: `.claude/skills/sdd/SKILL.md` (Core invariants, Step 0)
@@ -291,7 +259,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 7: [Skill] — `sdd` gate prompts get a baseline contract and layer-based tiering
+### Task 6: [Skill] — `sdd` gate prompts get a baseline contract and layer-based tiering
 
 **Files**
 - modify: `.claude/skills/sdd/SKILL.md` — Step 0 item 6 (packet read), Step 2 implementer prompt,
@@ -346,13 +314,13 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 8: [Skill] — `writing-plans` switches plans from code to contracts
+### Task 7: [Skill] — `writing-plans` switches plans from code to contracts
 
 **Files**
 - modify: `.claude/skills/writing-plans/SKILL.md` (repo table, Step 3, Provenance)
 - test: `grep -c` assertions below
 
-> **Ordering:** must land after Task 2. Until Playwright is installed, the skill's statement that
+> **Ordering:** must land after Task 1. Until Playwright is installed, the skill's statement that
 > it does not exist is true.
 
 > **The red step is KEPT.** Its primary form asserts a named export with a declared shape is
@@ -404,7 +372,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 9: [Skill] — `PLAN-TEMPLATES.md` carries the contract template
+### Task 8: [Skill] — `PLAN-TEMPLATES.md` carries the contract template
 
 **Files**
 - modify: `.claude/skills/writing-plans/references/PLAN-TEMPLATES.md`
@@ -435,7 +403,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 10: [Skill] — `feature-spec` maps Playwright scenarios instead of unit tests
+### Task 9: [Skill] — `feature-spec` maps Playwright scenarios instead of unit tests
 
 **Files**
 - modify: `.claude/skills/feature-spec/SKILL.md` — YAML frontmatter `description:`, SA role table,
@@ -445,7 +413,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > **Six occurrences, not four.** `grep -c 'Unit-test mapping'` returns `4` (lines 61, 109, 182,
 > 218), but case-insensitively there are `6`: line 3 is the skill's YAML `description:` — the text
 > the Skill tool matches on — and line 47 is the SA role table. Fixing only four leaves the skill
-> advertising a capability it no longer has, while Task 11 corrects the same wording in
+> advertising a capability it no longer has, while Task 10 corrects the same wording in
 > `AGENTS.md`, producing exactly the drift this plan exists to remove.
 
 - [ ] **Step 1 — Confirm both counts.**
@@ -473,7 +441,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 ---
 
-### Task 11: [Docs] — `CLAUDE.md` and `AGENTS.md` match what the skills now do
+### Task 10: [Docs] — `CLAUDE.md` and `AGENTS.md` match what the skills now do
 
 **Files**
 - modify: `CLAUDE.md` (Source of truth, per-feature loop, Cost optimization)
@@ -498,21 +466,15 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       repo's verification commands, gate tiers, and known-dirty paths live.
 
 - [ ] **Step 5 — Correct `AGENTS.md`.** Its Feature Implementation Workflow section describes
-      `/feature-spec` as producing "unit-test mapping" (Task 10 removed that). Update to
+      `/feature-spec` as producing "unit-test mapping" (Task 9 removed that). Update to
       "Playwright scenario mapping" and note the clean-tree precondition in the `/sdd` bullet.
 
-- [ ] **Step 6 — Record how this change gets validated.** Add a note to CLAUDE.md's Cost
-      optimization section pointing at `docs/superpowers/specs/2026-09-12-baseline.md` (Task 1) and
-      stating that the next real feature run records dispatch count, wall-clock, and whether any
-      gate FAIL was a false positive.
-
-- [ ] **Step 7 — Verify.**
+- [ ] **Step 6 — Verify.**
       `grep -c 'repo-profile' CLAUDE.md` → Expected: `1` or greater.
       `grep -ci 'contracts, not code' CLAUDE.md` → Expected: `1` or greater.
       `grep -cin 'unit-test mapping' AGENTS.md` → Expected: `0`.
-      `grep -c '2026-09-12-baseline' CLAUDE.md` → Expected: `1` or greater.
 
-- [ ] **Step 8 — Final regression run.**
+- [ ] **Step 7 — Final regression run.**
       `npx tsc --noEmit` → Expected: exit 0, no output.
       `npm run lint` → Expected: exit 0, no output beyond npm's banner.
       `npm run build` → Expected: exit 0, ending with the route table.
@@ -524,7 +486,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 
 Work **one task at a time, in order.** Do not read ahead and batch tasks.
 
-Run this plan **directly, not through `/sdd`** — Tasks 6–11 edit the skills that would otherwise be
+Run this plan **directly, not through `/sdd`** — Tasks 5–10 edit the skills that would otherwise be
 executing it. Skill edits take effect on the next invocation, not the current one.
 
 For each task:
