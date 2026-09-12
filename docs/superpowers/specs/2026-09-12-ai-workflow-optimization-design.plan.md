@@ -385,7 +385,9 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       `grep -c 'TS2305' .claude/skills/writing-plans/SKILL.md`
       Expected: `1` or greater — the red step survived.
       `grep -ci 'probe' .claude/skills/writing-plans/SKILL.md`
-      Expected: `1` — the untouched Provenance row.
+      Expected: `2` — the untouched Provenance row, plus the new line prohibiting throwaway
+      `*.probe.tsx` / `lib/__probe/` files. (Corrected during execution: the prohibition has to
+      name the thing it prohibits, so `1` was unreachable without dropping the rule.)
 
 ---
 

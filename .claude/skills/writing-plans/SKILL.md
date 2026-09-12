@@ -35,14 +35,15 @@ Facts a plan written here must respect:
 | Typecheck          | `npx tsc --noEmit` — exit 0, prints nothing on success; exit 2 on failure                                                                                                                                                                                                                |
 | Build              | `npm run build` — also runs TypeScript; exit 0, prints a "Compiled successfully" line and a route table                                                                                                                                                                                  |
 | Dev server         | `npm run dev` (declared in `package.json`)                                                                                                                                                                                                                                               |
-| **Test framework** | **None is installed.** `package.json` has no `test` script, and `node_modules/.bin` contains only `eslint`, `next`, and `tsc`. Do not write plan steps that invoke `jest`, `vitest`, `playwright`, or `npm test` — they do not exist here. See _Test-first without a test runner_ below. |
+| **Test framework** | **No unit-test runner** — do not write plan steps invoking `jest`, `vitest`, or `npm test`. `@playwright/test` **is** installed; behavior a compiler cannot see is verified by a spec in `e2e/`, run as `npx playwright test e2e/<spec>.spec.ts`. See _Contract steps, verified by the compiler_ and _Behavior the compiler cannot see_ below. |
 | Path alias         | `@/*` maps to the repo root (`tsconfig.json`)                                                                                                                                                                                                                                            |
 | Backend            | None. Data lives in browser local storage; there is no API layer, server, or database.                                                                                                                                                                                                   |
 
-> **Context packet:** the facts in this table, the layer boundaries below, and the design/domain
-> facts from `REFERENCE.md`/`OVERVIEW.md`/`design.md` are also distilled in the repo context packet
-> at `/memories/repo/travel-expense-context.md`. Read that packet instead of re-reading the raw
-> files; re-read the raw files only when a task modifies them.
+> **Where repo facts live:** `.claude/repo-profile.md` is the source for verification commands and
+> when each applies, the behavioral gate, layer slices, known-dirty paths, and gate risk tiers —
+> read it rather than trusting a copy. Orientation for subagents is the core packet at
+> `memories/repo/travel-expense-context.md` plus one slice from `memories/repo/slices/`; re-read the
+> raw `REFERENCE.md`/`OVERVIEW.md`/`design.md` only when a task modifies them.
 
 ### Layers (task boundaries)
 
@@ -138,39 +139,77 @@ Expected: 1 test failed — parseInterval is not defined
 
 **Banned as steps:** "Add tests", "handle edge cases", "polish", "wire it up", "make sure it works". Each hides an unspecified amount of work and gives the implementer nothing to compare against.
 
-### Test-first without a test runner
+### Contract steps, verified by the compiler
 
-This repo has no test runner (see the table above), so the red→green loop runs through the **compiler**, which is a real and verified failure signal here:
+**A plan states contracts, not function bodies.** For each file a task touches, give the exported
+signature, the behavior, the edge cases, the negative constraints, and the verification command —
+then let the implementer write the code. A plan that carries the finished source makes the
+implementer a transcription step and leaves the review gates reviewing code the plan's author
+wrote, which is not independent review.
 
-1. **Write the call site first** — the code that uses the function you are about to write, or a type-level assertion of the contract.
-2. **Run `npx tsc --noEmit` and expect a specific, quoted failure.** Both formats below were produced by this repo:
-
-```
-Expected: exit 2, output exactly —
-lib/expenses/validateExpense.ts(1,10): error TS2305: Module '"@/lib/types"' has no exported member 'ExpenseFormValues'.
-```
+The reference shape:
 
 ```
-Expected: exit 2, output exactly —
-app/expenses/new/page.tsx(3,31): error TS2307: Cannot find module '@/lib/expenses/validateExpense' or its corresponding type declarations.
+File: components/AddCategoryModal.tsx  (create, 'use client')
+Exports: default ({ onAdded, onCancel }: { onAdded: (name: string) => void;
+         onCancel: () => void }) => JSX.Element
+Behavior: form submit -> addCategory(name); on !ok map reason
+          duplicate|storage|blank to an inline role="alert"; on ok onAdded(name.trim())
+Constraints: z-50 (paints above the fixed BottomNav); must not modify lib/categories.ts
+Verify: npx tsc --noEmit && npm run lint   -> exit 0, no output
 ```
+
+Give literal code only where exactness is the point and prose would be ambiguous — a regex, a
+formula, a specific Next.js API call with a known gotcha.
+
+**Keep the red→green loop.** This repo has no unit-test runner, so the compiler is the red signal,
+and it is a real one — `TS2305` asserts that *a named export with a declared shape* is missing, not
+merely that a file is absent. Since the contract above is the plan's whole payload, this is the one
+mechanical check that an implementation matches it:
+
+1. **Write the call site first** — the code that consumes the thing you are about to write.
+2. **Run `npx tsc --noEmit` and expect a specific, quoted failure.** Both formats below were
+   produced by this repo:
+
+```
+Expected: exit 2, error TS2305 on lib/expenses/validateExpense.ts —
+Module '"@/lib/types"' has no exported member 'ExpenseFormValues'.
+```
+
+```
+Expected: exit 2, error TS2307 on app/expenses/new/page.tsx —
+Cannot find module '@/lib/expenses/validateExpense' or its corresponding type declarations.
+```
+
+**Match on the error code and message, never on the column number.** Predicting columns (the old
+`14 + length(<Name>)` formula) bought nothing and broke plans over cosmetic drift. Do **not** create
+throwaway `*.probe.tsx` or `lib/__probe/` files whose only purpose is to be deleted — put the red
+step in the real consuming file.
 
 3. **Write the minimal implementation** — enough to satisfy that error and nothing more.
 4. **Re-run `npx tsc --noEmit`.** `Expected: exit 0, no output.`
-5. **Regression run:** `npm run lint` (`Expected: exit 0, no output.`) then `npm run build` (`Expected: exit 0, ending with a route table listing the app's routes.`)
+5. **Regression run:** the commands `.claude/repo-profile.md` § Verification commands lists for this
+   task. `npx tsc --noEmit` and `npm run lint` always; `npm run build` **only** when the task touches
+   routes, config, or dependencies.
 
-For behavior a compiler cannot see — a warning banner, a redirect, a chart — the verification step is an explicit manual check, written so it can only be answered yes or no:
+### Behavior the compiler cannot see
+
+A warning banner, a redirect, a chart, a responsive layout — verified by a **Playwright spec**, never
+by a manual browser checklist. A checklist nobody runs is an unverified claim, and this app is
+entirely client-rendered from `localStorage`, so that is most of its behavior.
 
 ```
-- Run `npm run dev`, open http://localhost:3000/expenses/new, enter a date after
-  the trip end date, and submit.
-  Expected: the expense saves, and the text "This date is outside your trip
-  dates." appears above the date field. The form does not block submission.
+- Write `e2e/011-unsaved-warning.spec.ts` covering: a dirty form warns on
+  in-app navigation; a clean form does not.
+  `npx playwright test e2e/011-unsaved-warning.spec.ts`
+  Expected: exit 0, `2 passed`.
 ```
+
+Scope the command to the spec file, not the whole suite — a whole-suite count breaks the moment
+another feature adds a test. See `.claude/repo-profile.md` § Behavioral gate for the two traps specs
+hit in this repo (seeding `localStorage` before first render, and Next.js's own `role="alert"`).
 
 "Open the page and check it looks right" is not a verification step.
-
-If a test runner is ever added to `package.json`, use it and quote its real output instead — but run the command and see its output before putting it in a plan.
 
 ### Refactor template
 
@@ -356,7 +395,7 @@ State what changed _and why_.
 | Typecheck command                                                                  | `npx tsc --noEmit`                                                                  | exit 0, no output                                                                                                                                                                                                                                                                                                   |
 | Typecheck failure format                                                           | `npx tsc --noEmit` against a file importing a missing module, then a missing export | exit 2; `lib/__probe/probe.ts(1,31): error TS2307: Cannot find module '@/lib/__probe/missing' or its corresponding type declarations.` and `lib/__probe/probe.ts(1,10): error TS2305: Module '"@/lib/__probe/mod"' has no exported member 'parseInterval'.` (probe files removed after checking)                    |
 | Build command                                                                      | `npm run build`                                                                     | exit 0, "Compiled successfully" then a route table (`/`, `/_not-found`)                                                                                                                                                                                                                                             |
-| No test runner                                                                     | `cat package.json` (no `test` script); `ls node_modules/.bin`                       | only `eslint`, `next`, `tsc` — no jest, vitest, playwright, mocha, cypress                                                                                                                                                                                                                                          |
+| No unit-test runner; Playwright installed (re-verified 2026-09-12)                 | `cat package.json`; `npx playwright --version`                                      | no `jest`/`vitest`/`mocha`/`cypress` and no unit `test` script; `@playwright/test` present with a `test:e2e` script, `Version 1.63.0`. Note `npx <pkg>` **cannot** prove a package absent — it installs one to answer the query; check `package.json` and `node_modules/.bin` instead.                              |
 | Strict TypeScript, `@/*` alias                                                     | `cat tsconfig.json`                                                                 | `"strict": true`, `"paths": {"@/*": ["./*"]}`                                                                                                                                                                                                                                                                       |
 | ESLint 9 flat config                                                               | `cat eslint.config.mjs`                                                             | `defineConfig([...nextVitals, ...nextTs, ...])`                                                                                                                                                                                                                                                                     |
 | Existing source layout                                                             | `find app -type f`                                                                  | only `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `app/favicon.ico`                                                                                                                                                                                                                                         |
