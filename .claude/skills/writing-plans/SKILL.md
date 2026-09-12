@@ -19,7 +19,7 @@ find . -type d -name writing-plans -path '*/skills/*' 2>/dev/null
 
 The two reference files are then:
 
-- `<skill-root>/references/PLAN-TEMPLATES.md` — plan header, test-first task template, refactor task template
+- `<skill-root>/references/PLAN-TEMPLATES.md` — plan header, contract task template, Playwright task template, refactor task template
 - `<skill-root>/references/PLAN-MAINTENANCE.md` — how plan.md and log.txt are updated during execution
 
 Read `PLAN-TEMPLATES.md` before drafting. Read `PLAN-MAINTENANCE.md` before writing the Execution section.
@@ -143,7 +143,7 @@ Under `test:` list the exact verification commands that prove this task landed �
 
 - Tasks are ordered so that each one's verification can actually pass at that point in the sequence. A task whose typecheck only passes after a later task lands is mis-ordered.
 
-## Step 3 — Test-first steps
+## Step 3 — Contract steps and their verification
 
 **Every step carries literal code or an exact command, AND its exact expected output.** Not "verify it works" — the output string an implementer compares against:
 
@@ -229,7 +229,7 @@ hit in this repo (seeding `localStorage` before first render, and Next.js's own 
 
 For **mechanical, behavior-preserving changes only** — a rename, a file move, an extraction with no logic change. It replaces the red step with a build verification: apply change → `npm run lint && npx tsc --noEmit && npm run build` → commit. The full template is in `<skill-root>/references/PLAN-TEMPLATES.md`.
 
-**When in doubt, use test-first.** If the change alters _any_ observable behavior, it is not a refactor.
+**When in doubt, use the contract template.** If the change alters _any_ observable behavior, it is not a refactor.
 
 ## Step 4 — Review
 

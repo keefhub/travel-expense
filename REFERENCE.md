@@ -27,7 +27,7 @@ Visual/interaction rules (color, type, spacing, component states): [design.md](d
 | Styling | Tailwind CSS v4 via `@tailwindcss/postcss` (no `tailwind.config.js` — config is CSS-first) |
 | Lint | ESLint 9 flat config, `eslint-config-next` (core-web-vitals + typescript) |
 | Package manager | npm (`package-lock.json`) |
-| Tests | **none installed** — no jest/vitest/playwright. Verification = lint + build. |
+| Tests | **No unit-test runner** — no jest/vitest. `@playwright/test` **is** installed: specs in `e2e/`, run `npx playwright test e2e/<spec>.spec.ts`. Verification = `tsc` + lint always, `build` only for route/config/dependency changes, Playwright for behavior a compiler cannot see. See [.claude/repo-profile.md](.claude/repo-profile.md). |
 
 Runtime deps are only `next`, `react`, `react-dom`. **There is no chart library, no date library, no
 form library, no state manager, no CSV library.** Feature 009 needs a pie chart and 014 needs CSV —
@@ -59,8 +59,12 @@ app/
   trip/edit/page.tsx     # trip edit route (002, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState), mirroring app/page.tsx's hydration-safe pattern: renders null until determined, redirects to "/" via router.replace in a useEffect when no trip is saved, else mounts components/TripEditForm.tsx
   trip/new/page.tsx      # new-trip route (003, complete) — 'use client'; useSyncExternalStore over a per-instance store (createTripStore via useState), mirroring app/trip/edit/page.tsx's hydration-safe pattern: renders null until determined, redirects to "/" via router.replace in a useEffect when no trip is saved, else shows components/NewTripConfirm.tsx first and only after onConfirm renders components/TripSetupForm.tsx wired to a submit closure that adapts lib/trip.ts's submitNewTrip (adding saveExpenses/saveExchangeRates to the deps TripSetupForm already supplies) to TripSetupForm's submit prop signature; both onSaved and onCancel use router.push (not router.replace) to "/" and "/trip/edit" respectively
 public/           # scaffold SVGs only (next.svg, vercel.svg, file.svg, globe.svg, window.svg)
+e2e/              # Playwright specs — the behavioral gate for anything tsc cannot see
+playwright.config.ts  # testDir ./e2e, baseURL localhost:3000, chromium, webServer runs `npm run dev`
 features/         # the specs — OVERVIEW.md + 001..015 (source of truth)
-.claude/skills/   # feature-spec, spec-review, writing-plans, git-commit
+.claude/skills/   # feature-spec, spec-review, writing-plans, sdd, git-commit
+.claude/repo-profile.md  # verification commands, behavioral gate, layer slices, known-dirty paths,
+                  #   gate risk tiers — the source the pipeline skills cite
 doc/              # agent-generated decision trail: doc/features/<NNN>-<slug>/{spec,plan}.md +
                   #   log.txt, and doc/workflow/ for pipeline work. See doc/README.md
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored

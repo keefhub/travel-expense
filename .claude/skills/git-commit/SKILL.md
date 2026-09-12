@@ -1,11 +1,13 @@
 ---
 name: git-commit
-description: "Lint, build, and commit the currently implemented feature with a detailed conventional-commit message. Use after implementing a feature from features/NNN.*.md, or whenever asked to verify and commit the current changes. Fails closed: never commits on a lint or build failure, and logs the failure to output/error/{feature}.md instead."
+description: "Verify (lint, typecheck, build when warranted, Playwright specs) and commit the currently implemented feature with a detailed conventional-commit message. Use after implementing a feature from features/NNN.*.md, or whenever asked to verify and commit the current changes. Fails closed: never commits on a lint, typecheck, build, or Playwright failure, and logs the failure to output/error/{feature}.md instead."
 ---
 
 # /git-commit
 
-Isolated verify-and-commit pipeline for this repo. This is the *only* place lint, build, and commit-message rules live — [CLAUDE.md](../../../CLAUDE.md)'s feature loop just invokes this skill and reacts to whether it succeeded; it does not duplicate these steps.
+Isolated verify-and-commit pipeline for this repo. [CLAUDE.md](../../../CLAUDE.md)'s feature loop invokes this skill and reacts to whether it succeeded; it does not duplicate these steps.
+
+**Which commands to run comes from [`.claude/repo-profile.md`](../../repo-profile.md) § Verification commands** — that file is the source, this skill is the sequencer. The commit-message rules below are this skill's own.
 
 ## Usage
 
@@ -33,12 +35,25 @@ Run `npm run lint`.
 - **Fails:** go to Step 5 (failure path) with the lint output. Do not attempt the build.
 - **Passes:** continue to Step 3.
 
-## Step 3 — Build
+## Step 3 — Typecheck, then build only if the change warrants it
 
-Run `npm run build` (this also type-checks, per this repo's `package.json`).
+Run `npx tsc --noEmit` — always.
 
-- **Fails:** go to Step 5 (failure path) with the build output.
-- **Passes:** continue to Step 4.
+Then run `npm run build` **only if the change touches routes (`app/**/page.tsx`, layouts), config, or dependencies**, per `.claude/repo-profile.md` § Verification commands. It is the slowest command here and adds nothing over `tsc` for a change that touches neither. If in doubt, run it.
+
+- **Either fails:** go to Step 5 (failure path) with the output.
+- **Both pass (or build correctly skipped):** continue to Step 3b.
+
+## Step 3b — Behavioral gate
+
+If the change touches anything under `app/`, `components/`, or an existing spec in `e2e/`, run the specs covering it:
+
+```
+npx playwright test e2e/<spec>.spec.ts
+```
+
+- **Fails:** go to Step 5 (failure path) with the Playwright output. A failing spec must never enter git history, exactly like a failing lint or build.
+- **Passes, or no spec covers this change:** continue to Step 4.
 
 ## Step 4 — Commit (success path)
 
@@ -52,7 +67,7 @@ Run `npm run build` (this also type-checks, per this repo's `package.json`).
 
 ## Step 5 — Log and stop (failure path)
 
-Do **not** commit. A failing lint or build must never enter git history.
+Do **not** commit. A failing lint, typecheck, build, or Playwright spec must never enter git history.
 
 1. Write `output/error/{feature}.md`, creating `output/error/` if needed:
 
@@ -60,7 +75,7 @@ Do **not** commit. A failing lint or build must never enter git history.
    # {feature} — build failed
 
    - Date: {ISO date}
-   - Command: `npm run lint` | `npm run build`   (whichever failed)
+   - Command: `npm run lint` | `npx tsc --noEmit` | `npm run build` | `npx playwright test …`   (whichever failed)
 
    ## Error output
 

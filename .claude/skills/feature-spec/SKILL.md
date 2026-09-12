@@ -172,7 +172,7 @@ Write `doc/features/{NNN}-{slug}/spec.md`, creating the folder if needed. Use th
 | Feature          | {NNN} — {title}                 |
 | Spec source      | `features/{feature-name}.md`    |
 | Standing context | `features/OVERVIEW.md` §1–3     |
-| Test runner      | {detected, or "none installed"} |
+| Behavioral gate  | Playwright (`e2e/`) — no unit-test runner; see `.claude/repo-profile.md` |
 | Date             | {ISO date}                      |
 
 ## Gate summary

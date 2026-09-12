@@ -43,7 +43,7 @@ These are non-negotiable — do not shortcut them under time pressure or when a 
 
 2. Read the plan file at `<path-to-plan.md>` in full. Note its `**Source:**`, `**Goal:**`, `**Architecture:**` header lines and every `### Task N: [Layer] — <outcome>` section (each with a `**Files**` manifest and `- [ ]` steps, per this repo's `writing-plans` skill conventions). If the plan uses a different heading shape, adapt to it — the invariant is "one task, one Files manifest, one verification command per step," not this exact syntax.
 3. Let `<plan-dir>` be the directory containing the plan file.
-4. **`PROGRESS.md`** — if `<plan-dir>/PROGRESS.md` does not exist, create it (template below) seeded with one unchecked line per task found in the plan. If it exists, read it — it is the source of truth for what's already done, not your memory of a prior session.
+4. **`PROGRESS.md`** — if `<plan-dir>/PROGRESS.md` does not exist, create it (template below) seeded with one unchecked line per task found in the plan. If it exists, read it — within this run it is the source of truth for which tasks are done, not your memory of a prior session. It is git-ignored run state, scoped to this plan: *feature-level* progress is still derived from `git log`, per CLAUDE.md. The two do not compete.
 5. **`log.txt`** — if `<plan-dir>/log.txt` does not exist, create an empty file. If it already exists (e.g. from prior manual execution of this same plan), leave existing entries untouched and append below them.
 6. Find the first unchecked task in `PROGRESS.md`. If none — every task is checked — skip to **Completion** below.
 7. Read the **core** context packet (`memories/repo/travel-expense-context.md`) — the orientation
