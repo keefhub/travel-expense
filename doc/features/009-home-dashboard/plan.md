@@ -925,7 +925,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 > Interaction: this task consumes `EXPENSE_BATCH_SIZE` from Task 7 — do not hardcode `10` in
 > `Dashboard.tsx`. Task 7 must be committed first.
 
-- [ ] **Step 1 — Write the spec first.** Create `e2e/009-dashboard-show-more.spec.ts` covering two
+- [x] **Step 1 — Write the spec first.** Create `e2e/009-dashboard-show-more.spec.ts` covering two
       cases:
       1. With 5 or fewer expenses, neither a "Show more" nor a "Show less" button renders.
       2. With more than `RECENT_EXPENSE_LIMIT + EXPENSE_BATCH_SIZE` expenses (use 17), the
@@ -954,14 +954,14 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       and `page.getByRole("button", { name: "Show less" })` — Step 3's contract fixes those exact
       labels.
 
-- [ ] **Step 2 — Run it and confirm it fails.**
+- [x] **Step 2 — Run it and confirm it fails.**
       `npx playwright test e2e/009-dashboard-show-more.spec.ts`
       Expected: exit 1, `1 failed` (the "5 or fewer" case already passes against the unmodified
       Dashboard, since it has no buttons to assert absent yet; the batching/collapse case fails
       because neither button exists), `1 passed`.
       (Verified empirically against this exact repo state before writing this plan.)
 
-- [ ] **Step 3 — Implement to this contract.**
+- [x] **Step 3 — Implement to this contract.**
 
       ```
       File: components/Dashboard.tsx  (modify)
@@ -983,24 +983,24 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
                 any other section of Dashboard.tsx, and do not touch `getRecentExpenses` itself.
       ```
 
-- [ ] **Step 4 — Run it and confirm it passes.**
+- [x] **Step 4 — Run it and confirm it passes.**
       `npx playwright test e2e/009-dashboard-show-more.spec.ts`
       Expected: exit 0, `2 passed`.
       (Verified empirically against this exact repo state before writing this plan.)
 
-- [ ] **Step 5 — Typecheck and lint.**
+- [x] **Step 5 — Typecheck and lint.**
       `npx tsc --noEmit` → Expected: exit 0, no output.
       `npm run lint` → Expected: exit 0, no output.
       (`npm run build` is not required — no route, config, or dependency changed.)
 
-- [ ] **Step 6 — Update REFERENCE.md.** Read the current `components/Dashboard.tsx` file-tree
+- [x] **Step 6 — Update REFERENCE.md.** Read the current `components/Dashboard.tsx` file-tree
       entry in REFERENCE.md §4 (it currently ends "...absorbs everything previously inlined in
       app/page.tsx; mounted by app/page.tsx"). Insert, before that final clause, in the same style:
       `, plus "Show more"/"Show less" controls (009) that expand the list in batches of
       EXPENSE_BATCH_SIZE (10) up to all expenses and collapse it back to RECENT_EXPENSE_LIMIT (5)`.
       Do not touch any other REFERENCE.md entry.
 
-- [ ] **Step 7 — Commit.**
+- [x] **Step 7 — Commit.**
       `git add components/Dashboard.tsx REFERENCE.md e2e/009-dashboard-show-more.spec.ts && git commit`
       Message: `feat(009): expand recent transactions via Show more/Show less`
 

@@ -328,3 +328,45 @@ Verification:
   npm run lint                       exit 0, no output
   (npm run build not required — no route/config/dependency changed)
 =====================================================================
+
+=====================================================================
+Task 8: [UI] — Dashboard reveals more recent transactions in batches, with a collapse control
+Completed: 2026-09-12
+Commit: 9f805b5
+
+Summary:
+  Added local visibleCount state to components/Dashboard.tsx (initialized to
+  RECENT_EXPENSE_LIMIT), passing it as getRecentExpenses's limit. Added
+  "Show more" (shown while visibleCount < expenses.length, advances by
+  EXPENSE_BATCH_SIZE capped at expenses.length) and "Show less" (shown while
+  visibleCount > RECENT_EXPENSE_LIMIT, resets to RECENT_EXPENSE_LIMIT) buttons
+  inside the "Recent transactions" section, using the existing btn-text class.
+  Added e2e/009-dashboard-show-more.spec.ts covering the <=5 and 17-expense
+  cases including the navigation-reset assertion. Documented in REFERENCE.md.
+
+Key Decisions:
+  - Buttons render as siblings after the <ul>, inside the same "Recent
+    transactions" section div, per the plan's "below the existing <ul>".
+  - Both buttons may render at once (visibleCount strictly between limit and
+    total), matching the design doc's stated behavior.
+
+Deviations:
+  - None. Spec failed exactly as predicted (1 passed / 1 failed, the batching
+    case failing on the missing "Show more" button), then 2 passed after
+    implementation.
+
+Files Changed:
+  - components/Dashboard.tsx (modified — visibleCount state + two buttons +
+    imports of RECENT_EXPENSE_LIMIT/EXPENSE_BATCH_SIZE)
+  - e2e/009-dashboard-show-more.spec.ts (created)
+  - REFERENCE.md (modified — Dashboard.tsx entry extended; only this hunk
+    staged, isolated from unrelated pre-existing edits to app/layout.tsx,
+    TripEditForm.tsx, TripSetupForm.tsx)
+
+Verification:
+  npx playwright test e2e/009-dashboard-show-more.spec.ts  1 passed / 1 failed (before)
+  npx playwright test e2e/009-dashboard-show-more.spec.ts  2 passed (after)
+  npx tsc --noEmit                       exit 0, no output
+  npm run lint                           exit 0, no output
+  (npm run build not required — no route/config/dependency changed)
+=====================================================================
