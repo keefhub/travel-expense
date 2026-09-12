@@ -285,7 +285,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       `"CategoryPieChart"` is 16 characters, so `14 + 16 = 30`.)
 
 - [x] **Step 3 — Implement the component.** Create `components/CategoryPieChart.tsx`. No `'use
-    client'` directive — this component has no hooks or event handlers, matching
+  client'` directive — this component has no hooks or event handlers, matching
       `components/NewTripConfirm.tsx`'s precedent of a plain component when nothing client-only is
       needed:
 
@@ -826,16 +826,17 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       (`○` static shell vs. `ƒ` dynamic) isn't asserted here — confirm the row for `/expenses/[id]`
       is present, whatever its marker, and note the actual output in `log.txt` rather than treating
       an unexpected-but-present marker as a failure:
-      `     Route (app)
-    ┌ ○ /
-    ├ ○ /_not-found
-    ├ ○ /categories
-    ├   /expenses/[id]
-    ├ ○ /expenses/new
-    ├ ○ /settings
-    ├ ○ /trip/edit
-    └ ○ /trip/new
-    `
+      ```
+      Route (app)
+      ┌ ○ /
+      ├ ○ /_not-found
+      ├ ○ /categories
+      ├   /expenses/[id]
+      ├ ○ /expenses/new
+      ├ ○ /settings
+      ├ ○ /trip/edit
+      └ ○ /trip/new
+      ```
 
 - [x] **Step 5 — Manual check: the detail view.** No browser-automation tool may be available in this
       environment — if so, state that plainly instead of asserting these passed.
@@ -910,7 +911,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 - [x] **Step 5 — Update REFERENCE.md.** Read the current `lib/expenses.ts` file-tree entry in
       REFERENCE.md §4 (it ends "...defaulting to the last RECENT_EXPENSE_LIMIT (5)"). Append, in the
       same style: `; EXPENSE_BATCH_SIZE (10) — how many additional transactions a single dashboard
-    "Show more" click reveals`. Do not touch any other REFERENCE.md entry.
+  "Show more" click reveals`. Do not touch any other REFERENCE.md entry.
 
 - [x] **Step 6 — Regression run.**
       `npm run lint` → Expected: exit 0, no output.
@@ -1007,7 +1008,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       entry in REFERENCE.md §4 (it currently ends "...absorbs everything previously inlined in
       app/page.tsx; mounted by app/page.tsx"). Insert, before that final clause, in the same style:
       `, plus "Show more"/"Show less" controls (009) that expand the list in batches of
-    EXPENSE_BATCH_SIZE (10) up to all expenses and collapse it back to RECENT_EXPENSE_LIMIT (5)`.
+  EXPENSE_BATCH_SIZE (10) up to all expenses and collapse it back to RECENT_EXPENSE_LIMIT (5)`.
       Do not touch any other REFERENCE.md entry.
 
 - [x] **Step 7 — Commit.**
