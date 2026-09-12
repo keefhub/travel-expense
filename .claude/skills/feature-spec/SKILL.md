@@ -1,6 +1,6 @@
 ---
 name: feature-spec
-description: "Analyze ONE feature spec and produce a gated BA analysis, technical specification, BDD acceptance criteria, unit-test mapping, AC verification matrix, and contrarian review, written to doc/spec/{feature-name}.md. Two roles collaborate: Business Analyst (BA) and Solution Architect (SA), with a pass/fail gate between every phase. Use for feature analysis, acceptance-criteria verification, BDD generation, or specification creation. Processes exactly one feature per invocation — never batch-reads features/."
+description: "Analyze ONE feature spec and produce a gated BA analysis, technical specification, BDD acceptance criteria, Playwright scenario mapping, AC verification matrix, and contrarian review, written to doc/spec/{feature-name}.md. Two roles collaborate: Business Analyst (BA) and Solution Architect (SA), with a pass/fail gate between every phase. Use for feature analysis, acceptance-criteria verification, BDD generation, or specification creation. Processes exactly one feature per invocation — never batch-reads features/."
 ---
 
 # /feature-spec
@@ -44,7 +44,7 @@ Two roles produce the document. Every phase is owned by one of them, and each wr
 | Role                        | Owns                                                                                             | Speaks in terms of                                              | Must never                                              |
 | --------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------- |
 | **BA** — Business Analyst   | Phase 1 (business analysis), Phase 3 (BDD acceptance criteria), Phase 5 (AC verification matrix) | user goals, business rules, states, edge cases, acceptance      | name a React component, hook, file path, or library     |
-| **SA** — Solution Architect | Phase 2 (technical specification), Phase 4 (unit-test mapping)                                   | data model, module boundaries, state, validation, errors, tests | introduce behaviour the BA did not derive from the spec |
+| **SA** — Solution Architect | Phase 2 (technical specification), Phase 4 (Playwright scenario mapping)                                   | data model, module boundaries, state, validation, errors, tests | introduce behaviour the BA did not derive from the spec |
 
 Phase 6 is adversarial: **each role reviews the other's artifacts**, not its own.
 
@@ -58,7 +58,7 @@ Run in order. Each phase ends at a gate. **A gate that fails does not advance** 
 | 1   | Business analysis       | BA    | **G1 Business**     | Every Gherkin scenario maps to ≥1 numbered business rule; every rule traces to spec text or a listed assumption                        |
 | 2   | Technical specification | SA    | **G2 Design**       | Every business rule from G1 has a design element that satisfies it; no design element exists without a rule                            |
 | 3   | BDD acceptance criteria | BA    | **G3 Acceptance**   | Every AC is atomic, observable, and Given/When/Then-shaped; every original scenario is covered; no AC asserts an implementation detail |
-| 4   | Unit-test mapping       | SA    | **G4 Test**         | Every AC has ≥1 named test with a stated assertion; every test names the module it exercises                                           |
+| 4   | Playwright scenario mapping       | SA    | **G4 Test**         | Every AC has ≥1 named test with a stated assertion; every test names the module it exercises                                           |
 | 5   | AC verification matrix  | BA    | **G5 Traceability** | Zero rows with an empty Rule, Design, or Test cell; no orphans in either direction                                                     |
 | 6   | Contrarian review       | BA↔SA | **G6 Challenge**    | ≥3 substantive challenges raised, each resolved as Accepted / Rejected-with-reason / Open                                              |
 
@@ -69,7 +69,7 @@ Run in order. Each phase ends at a gate. **A gate that fails does not advance** 
 3. Read `features/OVERVIEW.md` sections 1–3 only.
 4. Set `{feature-name}` to the spec filename without extension (e.g. `005.record-expense`). Output path is `doc/spec/{feature-name}.md`.
 5. If `doc/spec/{feature-name}.md` already exists, read it and treat this run as a **revision** — preserve resolved Open Questions and prior contrarian outcomes rather than regenerating them from scratch.
-6. Check `package.json` for a test runner (`vitest`, `jest`, `node --test`, …). Whatever you find — including nothing — is what Phase 4 writes against; state it explicitly in the document. Do not add a test dependency.
+6. Read [`.claude/repo-profile.md`](../../repo-profile.md) § Behavioral gate — it is the source of truth for what this repo can actually verify, and what Phase 4 writes against. Do not re-derive it from `package.json`, and do not add a test dependency.
 
 ### Phase 1 — Business analysis (BA, gate G1)
 
@@ -106,18 +106,19 @@ Rewrite and _complete_ the feature's Gherkin as verification-ready criteria. Pro
 - `Scenario Outline` + `Examples` where the same behaviour varies only by data (validation ranges, currency codes).
 - Every step observable from outside the implementation: assert what the user sees or what is persisted, never "the `useTrip` hook returns…".
 
-### Phase 4 — Unit-test mapping (SA, gate G4)
+### Phase 4 — Playwright scenario mapping (SA, gate G4)
 
-Map acceptance to executable checks. Produce a table:
+Map every acceptance criterion to an **executable Playwright check**. This table feeds the plan's verification steps directly, so a row an implementer cannot run is a defect.
 
-| Test ID | AC ID | Type | Target module | Test name | Assertion |
-| ------- | ----- | ---- | ------------- | --------- | --------- |
+| Test ID | AC ID | Spec file | Test name | Assertion |
+| ------- | ----- | --------- | --------- | --------- |
 
-- IDs are `UT-{NNN}-01…`. Type is `unit` / `component` / `integration`.
-- Test name is the sentence that would go inside `it(...)`, not a label.
-- Assertion states the concrete expected value or observable effect.
+- IDs are `E2E-{NNN}-01…`. Spec file is the real path, `e2e/{NNN}-{slug}.spec.ts`.
+- Test name is the sentence that goes inside `test(...)`, not a label.
+- Assertion states the concrete observable effect — the visible text, the URL after a redirect, the row that disappeared.
 - An AC needing more than one test gets more than one row; say so rather than collapsing them.
-- Add a short note listing the test file paths this implies, and — if no runner is installed — state plainly that these are planned tests and no runner exists yet.
+- **An AC the compiler already proves does not need a row.** A pure function's return value is settled by `tsc` plus its call site; say so instead of inventing a browser test for it.
+- Two constraints every row here inherits, from `.claude/repo-profile.md` § Behavioral gate: the spec must seed `localStorage` via `page.addInitScript` before first render, and alert assertions must be scoped past Next.js's own `role="alert"` route announcer.
 
 **Every test must be able to fail.** When a row guards a specific bug, pick probe values at which that bug actually manifests, and check the arithmetic. A timezone test whose clock instant makes the local and UTC dates identical passes against the broken implementation it was written to catch — and a test that certifies its own bug as fixed is worse than no test at all. Where the failure is boundary-shaped, probe the boundary itself, not a value one step away from it.
 
@@ -125,8 +126,10 @@ Map acceptance to executable checks. Produce a table:
 
 The traceability artifact. One row per AC:
 
-| AC ID | Business rule(s) | Design element(s) | Test(s) | Status |
-| ----- | ---------------- | ----------------- | ------- | ------ |
+| AC ID | Business rule(s) | Design element(s) | Verified by | Status |
+| ----- | ---------------- | ----------------- | ----------- | ------ |
+
+`Verified by` is an `E2E-` id from Phase 4, or `compiler` for an AC that `tsc` plus its call site already settles. It is never blank and never "manual".
 
 `Status` is `Specified` — this document is the deliverable, not an implementation. Below the table, list explicitly:
 
@@ -134,6 +137,7 @@ The traceability artifact. One row per AC:
 - **Orphan design** — `TS-` ids with no AC (usually scope creep; challenge it in Phase 6).
 - **Uncovered scenarios** — original Gherkin scenarios that no AC covers.
 - **Uncovered edge cases** — `[derived]` cases from Phase 1 that no AC covers, each with the reason.
+- **Unverifiable ACs** — any AC whose `Verified by` is neither an `E2E-` id nor `compiler`. This list must be empty: an AC nothing can check is a requirement nobody will know is broken.
 
 All four lists empty is the gate. Non-empty and unresolvable after 2 passes moves to Open Questions.
 
@@ -179,7 +183,7 @@ Write `doc/spec/{feature-name}.md`, creating `doc/spec/` if needed. Use this str
 | G1 Business     | Business analysis       | BA    | PASSED |
 | G2 Design       | Technical specification | SA    | PASSED |
 | G3 Acceptance   | BDD acceptance criteria | BA    | PASSED |
-| G4 Test         | Unit-test mapping       | SA    | PASSED |
+| G4 Test         | Playwright scenario mapping       | SA    | PASSED |
 | G5 Traceability | AC verification matrix  | BA    | PASSED |
 | G6 Challenge    | Contrarian review       | BA↔SA | PASSED |
 
@@ -215,7 +219,7 @@ _(Use `PASSED WITH OPEN ITEMS` where applicable, linking to Open Questions.)_
 
 ## 3. BDD acceptance criteria — BA
 
-## 4. Unit-test mapping — SA
+## 4. Playwright scenario mapping — SA
 
 ## 5. AC verification matrix — BA
 

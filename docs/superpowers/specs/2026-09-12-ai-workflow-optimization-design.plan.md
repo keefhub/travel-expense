@@ -447,8 +447,12 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 - [ ] **Step 3 — Rewrite Phase 4's body.** It maps each acceptance criterion to a Playwright spec
       file and test name, feeding the plan's verification steps directly.
 
-- [ ] **Step 4 — Compact Phase 5.** The AC verification matrix stays — it catches uncovered edge
-      cases — but as a table with stated columns, not prose.
+- [x] **Step 4 — Compact Phase 5.** *Not needed as specified.* Phase 5 was already a table plus
+      four short lists, not prose — the design's premise here was wrong, and its two closing
+      paragraphs ("count obligations, not identifiers") are load-bearing gate rules that compacting
+      would have weakened. Made the change that was actually required instead: the `Test(s)` column
+      became `Verified by`, taking an `E2E-` id or `compiler`, and a fifth list catches any AC that
+      nothing can verify.
 
 - [ ] **Step 5 — Update Phase 0's runner check.** It currently inspects `package.json` for a
       unit-test runner. It now cites `.claude/repo-profile.md` § Behavioral gate as the source of
