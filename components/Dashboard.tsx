@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { Trip } from "@/lib/types";
 import { getExpenses, getExchangeRates } from "@/lib/storage";
@@ -10,7 +11,7 @@ import {
   getRemainingBudget,
   getCategoryTotals,
 } from "@/lib/currency";
-import { getRecentExpenses } from "@/lib/expenses";
+import { getRecentExpenses, RECENT_EXPENSE_LIMIT, EXPENSE_BATCH_SIZE } from "@/lib/expenses";
 import CategoryPieChart from "@/components/CategoryPieChart";
 import Skeleton from "@/components/Skeleton";
 
@@ -56,7 +57,8 @@ export default function Dashboard({
   const remainingBudget =
     trip.budget !== undefined ? getRemainingBudget(trip.budget, convertedTotals) : null;
   const categoryTotals = getCategoryTotals(expenses, trip.currency, rates).categoryTotals;
-  const recentExpenses = getRecentExpenses(expenses);
+  const [visibleCount, setVisibleCount] = useState(RECENT_EXPENSE_LIMIT);
+  const recentExpenses = getRecentExpenses(expenses, visibleCount);
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -146,6 +148,26 @@ export default function Dashboard({
               </li>
             ))}
           </ul>
+        )}
+        {visibleCount < expenses.length && (
+          <button
+            type="button"
+            className="btn-text"
+            onClick={() =>
+              setVisibleCount(Math.min(visibleCount + EXPENSE_BATCH_SIZE, expenses.length))
+            }
+          >
+            Show more
+          </button>
+        )}
+        {visibleCount > RECENT_EXPENSE_LIMIT && (
+          <button
+            type="button"
+            className="btn-text"
+            onClick={() => setVisibleCount(RECENT_EXPENSE_LIMIT)}
+          >
+            Show less
+          </button>
         )}
       </div>
     </div>
