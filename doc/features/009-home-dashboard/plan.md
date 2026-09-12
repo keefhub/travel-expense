@@ -1,6 +1,6 @@
 # Home Dashboard — Implementation Plan
 
-**Status:** In Progress
+**Status:** Complete
 **Amended:** 2026-09-12 — added Tasks 7–9 to add "Show more"/"Show less" controls that expand
 the dashboard's recent-transactions list beyond the original five-item ceiling, in batches, per
 the approved design at `docs/superpowers/specs/2026-09-12-dashboard-show-more-transactions-design.md`.
@@ -1012,7 +1012,7 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 - modify: `features/009.home-dashboard.md`
 - test: `git diff features/009.home-dashboard.md`
 
-- [ ] **Step 1 — Add a Gherkin scenario.** In `features/009.home-dashboard.md`, after the existing
+- [x] **Step 1 — Add a Gherkin scenario.** In `features/009.home-dashboard.md`, after the existing
       "Scenario: User views recent transaction details" (the last scenario in the file), add:
 
       ```gherkin
@@ -1029,12 +1029,12 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
       Do not edit any existing scenario — the original five-item-ceiling scenarios describe the
       dashboard's initial view, which this change does not alter.
 
-- [ ] **Step 2 — Verify the diff is scoped.**
+- [x] **Step 2 — Verify the diff is scoped.**
       `git diff features/009.home-dashboard.md`
       Expected: the diff adds exactly one new `Scenario:` block (7 new lines) at the end of the
       `Feature:` block; no existing line is changed or removed.
 
-- [ ] **Step 3 — Commit.**
+- [x] **Step 3 — Commit.**
       `git add features/009.home-dashboard.md && git commit`
       Message: `docs(009): document the show more/less recent-transactions scenario`
 
@@ -1127,3 +1127,36 @@ Never commit on a failing lint, typecheck, or build.
   `/expenses/new`, `/settings`, `/trip/edit`, `/trip/new`).
 - All 12 review-gate passes across 6 tasks returned PASS (one task, Task 5, required one
   fix-and-re-review cycle on Gate A before passing).
+
+## Completion Addendum — Tasks 7–9 (2026-09-12)
+
+**What was built:**
+- `lib/expenses.ts`: `EXPENSE_BATCH_SIZE` (10) — how many additional transactions a single
+  dashboard "Show more" click reveals, added alongside the existing `RECENT_EXPENSE_LIMIT`.
+  Commit `cd64663`.
+- `components/Dashboard.tsx`: local `visibleCount` state driving a "Show more" control (advances
+  by `EXPENSE_BATCH_SIZE`, capped at the total) and a "Show less" control (resets to
+  `RECENT_EXPENSE_LIMIT`); both may render at once, and the state is ephemeral — it resets on
+  navigation away and back. Commit `9f805b5`.
+- `e2e/009-dashboard-show-more.spec.ts`: two Playwright cases — ≤5 expenses renders neither
+  control; 17 expenses exercises batch reveal (5 → 15 → 17), collapse (→ 5), and the
+  navigation-reset behavior. Commit `9f805b5`.
+- `features/009.home-dashboard.md`: added the "User expands and collapses the recent transactions
+  list" scenario; no existing scenario changed. Commit `02d7371`.
+
+**Deviations from the plan (Tasks 7–9):**
+- Task 7: `npx tsc --noEmit` reports a single missing export at exit code 1 in this repo (TS2305
+  message text matched the plan's prediction exactly; only the exit code differed from the
+  predicted "exit 2").
+- Task 8 Step 1's spec contract used `page.getByRole("link", { name: "Settings" })` /
+  `"Home"` for the navigation-reset check (BottomNav's accessible names), rather than a
+  literal "Settings link" — the plan's prose named the links by label; the assertion matches.
+- Task 9 Step 2's predicted "7 new lines" is understated: the plan's own verbatim Gherkin block
+  is 8 non-blank lines, and with its separating blank line the diff adds 9 lines total. The
+  one-new-scenario, no-existing-line-changed requirement was met exactly.
+
+**Final verification (Tasks 7–9, cumulative):**
+- `npx tsc --noEmit`: exit 0, no output.
+- `npm run lint`: exit 0, no output.
+- `npx playwright test e2e/009-dashboard-show-more.spec.ts`: 2 passed.
+- `npm run build` not required for any of Tasks 7–9 (no route, config, or dependency changed).

@@ -370,3 +370,29 @@ Verification:
   npm run lint                           exit 0, no output
   (npm run build not required — no route/config/dependency changed)
 =====================================================================
+
+=====================================================================
+Task 9: [Docs] — document the expand/collapse behavior in the feature spec
+Completed: 2026-09-12
+Commit: 02d7371
+
+Summary:
+  Added the "Scenario: User expands and collapses the recent transactions list"
+  Gherkin block to features/009.home-dashboard.md after the existing "User views
+  recent transaction details" scenario. No existing scenario edited.
+
+Key Decisions:
+  - Inserted the block verbatim from the plan, with its separating blank line.
+
+Deviations:
+  - The plan's Step 2 predicted "7 new lines"; the verbatim block is 8 non-blank
+    lines, and the diff adds 9 lines total (block + blank separator). The
+    one-new-scenario, no-existing-line-changed requirement was met exactly.
+
+Files Changed:
+  - features/009.home-dashboard.md (modified — one new scenario added)
+
+Verification:
+  git diff features/009.home-dashboard.md   one new Scenario block, no existing line changed
+  Plan header set to Complete; Completion Addendum for Tasks 7–9 appended in place.
+=====================================================================
