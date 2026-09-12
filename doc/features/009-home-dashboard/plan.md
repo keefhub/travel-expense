@@ -1,7 +1,15 @@
 # Home Dashboard — Implementation Plan
 
-**Status:** Complete
-**Source:** `doc/spec/009.home-dashboard.md`
+**Status:** In Progress
+**Amended:** 2026-09-12 — added Tasks 7–9 to add "Show more"/"Show less" controls that expand
+the dashboard's recent-transactions list beyond the original five-item ceiling, in batches, per
+the approved design at `docs/superpowers/specs/2026-09-12-dashboard-show-more-transactions-design.md`.
+This was a one-off enhancement request, not the next numbered feature in `features/`; the source
+feature file, `features/009.home-dashboard.md`, is amended by Task 9 to document it.
+> Note for whoever runs the final task: the **Completion Summary** below documents the original
+> six-task scope only (2026-09-11). When Task 9 lands, update that same section in place — add a
+> dated addendum covering Tasks 7–9 rather than appending a second "## Completion Summary" heading.
+**Source:** `doc/spec/009.home-dashboard.md` (Tasks 1–6); `docs/superpowers/specs/2026-09-12-dashboard-show-more-transactions-design.md` (Tasks 7–9)
 **Goal:** Replace `app/page.tsx`'s placeholder with the real home dashboard: trip summary, always-
 visible total spend, budget/remaining (unchanged from feature 008), a hand-rolled category pie
 chart, and the last five transactions with tap-through to a view-only detail page.
@@ -53,6 +61,25 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
   correctly for a `'use client'` page — the type is generated structurally from the route's folder
   name, independent of the Server/Client boundary; if this assumption is wrong, Task 6's own
   typecheck step will surface a concrete, diagnosable mismatch rather than fail silently.
+
+**Negative constraints (Tasks 7–9, from the 2026-09-12 design doc):**
+- Will NOT add a new route or page for a full expense history — the list expands in place on the
+  existing dashboard, per the approved design's decision.
+- Will NOT change how the single-expense detail page (`app/expenses/[id]/page.tsx`) works.
+- Will NOT persist the expanded/collapsed state across page loads or navigation — `visibleCount`
+  is ephemeral component state, not a `lib/storage` concern.
+- Will NOT change `getRecentExpenses`'s existing signature, default, or sort behavior — only a new
+  sibling constant (`EXPENSE_BATCH_SIZE`) is added alongside it.
+- Will NOT rewrite the existing "last five transactions" / "fewer than five transactions"
+  Gherkin scenarios in `features/009.home-dashboard.md` — they describe the initial view, which is
+  unchanged; Task 9 only adds a new scenario.
+
+**Assumptions (Tasks 7–9):**
+- Assumed: a batch size of 10 (`EXPENSE_BATCH_SIZE`) and a "Show less" control that resets fully to
+  5 rather than decrementing by one batch — both confirmed directly with the user during
+  brainstorming (see the design doc's "Decision"/"Behavior" sections).
+- Assumed: "Show more" and "Show less" may render simultaneously (e.g., after one click, with more
+  left to reveal) — this is the design doc's stated behavior, not an inferred edge case.
 
 ---
 
@@ -830,6 +857,186 @@ Data: browser local storage — no backend, no database. Verification: `npm run 
 - [x] **Step 7 — Commit.**
       `git add "app/expenses/[id]/page.tsx" REFERENCE.md && git commit`
       Message: `feat(009): add the view-only expense detail route`
+
+---
+
+### Task 7: [Domain] — EXPENSE_BATCH_SIZE controls how many transactions "Show more" reveals per click
+
+**Files**
+- modify: `lib/expenses.ts`
+- modify: `REFERENCE.md` (extend the `lib/expenses.ts` file-tree entry to mention
+  `EXPENSE_BATCH_SIZE`)
+- create (temporary, deleted within this task): `lib/expenses.probe.ts`
+- test: `npx tsc --noEmit`, `npm run lint`
+
+- [x] **Step 1 — Write the failing check.** Create `lib/expenses.probe.ts` containing exactly:
+
+      ```ts
+      import { EXPENSE_BATCH_SIZE } from "@/lib/expenses";
+      console.log(EXPENSE_BATCH_SIZE);
+      ```
+
+- [x] **Step 2 — Run it and confirm it fails.**
+      `npx tsc --noEmit`
+      Expected: exit 2, output exactly —
+      `lib/expenses.probe.ts(1,10): error TS2305: Module '"@/lib/expenses"' has no exported member 'EXPENSE_BATCH_SIZE'.`
+      (Verified empirically against this exact repo state before writing this plan.)
+
+- [x] **Step 3 — Implement.** In `lib/expenses.ts`, immediately after the existing
+      `export const RECENT_EXPENSE_LIMIT = 5;` line, add:
+
+      ```ts
+      export const EXPENSE_BATCH_SIZE = 10;
+      ```
+
+      Constraints: a plain numeric constant, nothing else. Must not change `RECENT_EXPENSE_LIMIT`'s
+      value or `getRecentExpenses`'s signature or behavior.
+
+- [x] **Step 4 — Delete the probe and re-run.** Remove `lib/expenses.probe.ts`, then
+      `npx tsc --noEmit`
+      Expected: exit 0, no output.
+
+- [x] **Step 5 — Update REFERENCE.md.** Read the current `lib/expenses.ts` file-tree entry in
+      REFERENCE.md §4 (it ends "...defaulting to the last RECENT_EXPENSE_LIMIT (5)"). Append, in the
+      same style: `; EXPENSE_BATCH_SIZE (10) — how many additional transactions a single dashboard
+      "Show more" click reveals`. Do not touch any other REFERENCE.md entry.
+
+- [x] **Step 6 — Regression run.**
+      `npm run lint` → Expected: exit 0, no output.
+      (`npm run build` is not required — this task touches neither a route, config, nor a
+      dependency, per `.claude/repo-profile.md` § Verification commands.)
+
+- [x] **Step 7 — Commit.**
+      `git add lib/expenses.ts REFERENCE.md && git commit`
+      Message: `feat(009): add EXPENSE_BATCH_SIZE to lib/expenses`
+
+---
+
+### Task 8: [UI] — Dashboard reveals more recent transactions in batches, with a collapse control
+
+**Files**
+- modify: `components/Dashboard.tsx`
+- modify: `REFERENCE.md` (extend the `components/Dashboard.tsx` file-tree entry to mention the new
+  controls)
+- create: `e2e/009-dashboard-show-more.spec.ts`
+- test: `npx playwright test e2e/009-dashboard-show-more.spec.ts`, `npx tsc --noEmit`,
+  `npm run lint`
+
+> Interaction: this task consumes `EXPENSE_BATCH_SIZE` from Task 7 — do not hardcode `10` in
+> `Dashboard.tsx`. Task 7 must be committed first.
+
+- [ ] **Step 1 — Write the spec first.** Create `e2e/009-dashboard-show-more.spec.ts` covering two
+      cases:
+      1. With 5 or fewer expenses, neither a "Show more" nor a "Show less" button renders.
+      2. With more than `RECENT_EXPENSE_LIMIT + EXPENSE_BATCH_SIZE` expenses (use 17), the
+         dashboard initially shows exactly 5 transaction links and a visible "Show more" button
+         (no "Show less"); clicking "Show more" reveals 15 links total, and now both buttons are
+         visible; clicking "Show more" again reveals all 17 (capped at the total, since only 2
+         remained) and "Show more" disappears while "Show less" stays visible; clicking "Show
+         less" collapses back to exactly 5 links and "Show more" reappears while "Show less"
+         disappears. Then, to verify the design doc's "`visibleCount` is component-local state —
+         it resets to 5 on navigation away and back (no persistence)" requirement: click "Show
+         more" once more (now 15 links), navigate to another route via BottomNav (e.g. click the
+         "Settings" link) and back via the "Home" link, and assert exactly 5 links show again with
+         no "Show less" button — proving the expansion did not survive the navigation/remount.
+
+      Seed `localStorage` via `page.addInitScript` **before** first render (the storage keys are
+      `travel-expense:trip` and `travel-expense:expenses`, per REFERENCE.md §6) — every route
+      redirects to `/` when `getTrip()` is `null`. Give every seeded expense a distinct `date` (for
+      example `2026-01-01` through `2026-01-17`) so `getRecentExpenses`'s newest-first sort is
+      deterministic, and use the trip's own currency for every expense so no missing-rate warning
+      interferes.
+
+      Count transaction rows with `page.locator('a[href^="/expenses/"]:not([href="/expenses/new"])')`
+      — the plain `a[href^="/expenses/"]` selector also matches BottomNav's "Add Expense" link
+      (`/expenses/new`), which starts with the same prefix; the `:not(...)` exclusion is required,
+      not optional style. Locate the buttons with `page.getByRole("button", { name: "Show more" })`
+      and `page.getByRole("button", { name: "Show less" })` — Step 3's contract fixes those exact
+      labels.
+
+- [ ] **Step 2 — Run it and confirm it fails.**
+      `npx playwright test e2e/009-dashboard-show-more.spec.ts`
+      Expected: exit 1, `1 failed` (the "5 or fewer" case already passes against the unmodified
+      Dashboard, since it has no buttons to assert absent yet; the batching/collapse case fails
+      because neither button exists), `1 passed`.
+      (Verified empirically against this exact repo state before writing this plan.)
+
+- [ ] **Step 3 — Implement to this contract.**
+
+      ```
+      File: components/Dashboard.tsx  (modify)
+      Behavior: add local state `visibleCount`, initialized to `RECENT_EXPENSE_LIMIT`; pass
+                `visibleCount` as getRecentExpenses's second argument instead of calling it with
+                no limit. Below the existing transaction <ul> (inside the same "Recent
+                transactions" section), render:
+                - a "Show more" button, shown only while `visibleCount < expenses.length`, that on
+                  click sets `visibleCount` to `Math.min(visibleCount + EXPENSE_BATCH_SIZE,
+                  expenses.length)`
+                - a "Show less" button, shown only while `visibleCount > RECENT_EXPENSE_LIMIT`,
+                  that on click resets `visibleCount` to `RECENT_EXPENSE_LIMIT`
+                Both buttons may render at the same time.
+      Constraints: import `RECENT_EXPENSE_LIMIT` and `EXPENSE_BATCH_SIZE` from "@/lib/expenses"
+                rather than hardcoding 5/10. Button text must be the literal strings "Show more"
+                and "Show less" (matched by accessible name in the new e2e spec). Use the
+                existing `btn-text` utility class (see components/CategoryManager.tsx's Rename/
+                Cancel buttons for precedent) — do not introduce a new button style. Do not modify
+                any other section of Dashboard.tsx, and do not touch `getRecentExpenses` itself.
+      ```
+
+- [ ] **Step 4 — Run it and confirm it passes.**
+      `npx playwright test e2e/009-dashboard-show-more.spec.ts`
+      Expected: exit 0, `2 passed`.
+      (Verified empirically against this exact repo state before writing this plan.)
+
+- [ ] **Step 5 — Typecheck and lint.**
+      `npx tsc --noEmit` → Expected: exit 0, no output.
+      `npm run lint` → Expected: exit 0, no output.
+      (`npm run build` is not required — no route, config, or dependency changed.)
+
+- [ ] **Step 6 — Update REFERENCE.md.** Read the current `components/Dashboard.tsx` file-tree
+      entry in REFERENCE.md §4 (it currently ends "...absorbs everything previously inlined in
+      app/page.tsx; mounted by app/page.tsx"). Insert, before that final clause, in the same style:
+      `, plus "Show more"/"Show less" controls (009) that expand the list in batches of
+      EXPENSE_BATCH_SIZE (10) up to all expenses and collapse it back to RECENT_EXPENSE_LIMIT (5)`.
+      Do not touch any other REFERENCE.md entry.
+
+- [ ] **Step 7 — Commit.**
+      `git add components/Dashboard.tsx REFERENCE.md e2e/009-dashboard-show-more.spec.ts && git commit`
+      Message: `feat(009): expand recent transactions via Show more/Show less`
+
+---
+
+### Task 9: [Docs] — document the expand/collapse behavior in the feature spec
+
+**Files**
+- modify: `features/009.home-dashboard.md`
+- test: `git diff features/009.home-dashboard.md`
+
+- [ ] **Step 1 — Add a Gherkin scenario.** In `features/009.home-dashboard.md`, after the existing
+      "Scenario: User views recent transaction details" (the last scenario in the file), add:
+
+      ```gherkin
+        Scenario: User expands and collapses the recent transactions list
+          Given the user has recorded more than five expenses
+          When the user views the dashboard
+          And the user selects "Show more"
+          Then the app should reveal up to ten additional transactions
+          And a "Show less" option should become available
+          When the user selects "Show less"
+          Then the app should show only the latest five transactions again
+      ```
+
+      Do not edit any existing scenario — the original five-item-ceiling scenarios describe the
+      dashboard's initial view, which this change does not alter.
+
+- [ ] **Step 2 — Verify the diff is scoped.**
+      `git diff features/009.home-dashboard.md`
+      Expected: the diff adds exactly one new `Scenario:` block (7 new lines) at the end of the
+      `Feature:` block; no existing line is changed or removed.
+
+- [ ] **Step 3 — Commit.**
+      `git add features/009.home-dashboard.md && git commit`
+      Message: `docs(009): document the show more/less recent-transactions scenario`
 
 ---
 

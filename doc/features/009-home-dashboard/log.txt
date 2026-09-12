@@ -300,3 +300,31 @@ Verification:
 Review Gate — Spec:    PASS (attempt 1)
 Review Gate — Quality: PASS (attempt 1)
 =====================================================================
+
+=====================================================================
+Task 7: [Domain] — EXPENSE_BATCH_SIZE controls how many transactions "Show more" reveals per click
+Completed: 2026-09-12
+Commit: cd64663
+
+Summary:
+  Added EXPENSE_BATCH_SIZE = 10 to lib/expenses.ts, immediately after
+  RECENT_EXPENSE_LIMIT. Documented in REFERENCE.md's lib/expenses.ts entry.
+
+Key Decisions:
+  - None beyond what the plan specified verbatim.
+
+Deviations:
+  - None. Probe error message matched the plan's prediction exactly.
+    (Note: tsc reports a single missing export at exit code 1 here, not the
+    plan's predicted exit 2 — same TS2305 message text.)
+
+Files Changed:
+  - lib/expenses.ts (modified — added EXPENSE_BATCH_SIZE)
+  - REFERENCE.md (modified — lib/expenses.ts entry extended)
+
+Verification:
+  npx tsc --noEmit (probe present)   TS2305 error matched exactly
+  npx tsc --noEmit (after impl+cleanup) exit 0, no output
+  npm run lint                       exit 0, no output
+  (npm run build not required — no route/config/dependency changed)
+=====================================================================
