@@ -1,6 +1,6 @@
 # AI Workflow Cost Optimization — Implementation Plan
 
-**Status:** In Progress
+**Status:** Complete
 **Source:** `docs/superpowers/specs/2026-09-12-ai-workflow-optimization-design.md`
 **Goal:** Cut per-feature token and wall-clock cost of the
 `/feature-spec` → `/writing-plans` → `/sdd` pipeline by roughly 40%, while making UI behavior
@@ -232,21 +232,21 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > The overhead seen in `010`'s log was improvised at runtime because the tree was dirty, and
 > fixing the tree removes it with no skill edit.
 
-- [ ] **Step 1 — Confirm no precondition exists today.**
+- [x] **Step 1 — Confirm no precondition exists today.**
       `grep -ci 'clean.tree\|working tree' .claude/skills/sdd/SKILL.md`
       Expected: `0`.
 
-- [ ] **Step 2 — Add the invariant.** Add a ninth **Core invariant** requiring a clean working
+- [x] **Step 2 — Add the invariant.** Add a ninth **Core invariant** requiring a clean working
       tree, with the design doc §1 definition: "dirty" means tracked files with uncommitted
       modifications; untracked paths no task will touch are permitted but must be declared.
 
-- [ ] **Step 3 — Pin the check as Step 0's FIRST item.** Renumber the existing six items to 2–7.
+- [x] **Step 3 — Pin the check as Step 0's FIRST item.** Renumber the existing six items to 2–7.
       Step 0 items 3 and 4 *create* `PROGRESS.md` and `log.txt`; a precondition appended after them
       would trip on files `/sdd` had just written. The new item 1 runs `git status --short`, treats
       `.claude/repo-profile.md`'s Known-dirty paths as permanently permitted, and stops with a
       report if any other tracked modification is undeclared.
 
-- [ ] **Step 4 — Cite the profile, do not inline it.** The permitted-path list lives in
+- [x] **Step 4 — Cite the profile, do not inline it.** The permitted-path list lives in
       `.claude/repo-profile.md`; Step 0 points at it rather than copying it.
 
 - [x] **Step 5 — Verify the invariant and the check landed.**
@@ -260,7 +260,7 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       > replaced with two assertions naming the two real sites rather than padding the prose to
       > satisfy a grep.
 
-- [ ] **Step 6 — Verify Step 6's staging rail was NOT disturbed.**
+- [x] **Step 6 — Verify Step 6's staging rail was NOT disturbed.**
       `grep -c 'git add -A' .claude/skills/sdd/SKILL.md`
       Expected: `1` — unchanged from before this task.
 
@@ -278,32 +278,32 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > Step 3 paragraph would leave `sdd` tiering by layer in one place and by feature size in three
 > others. All four must move together.
 
-- [ ] **Step 1 — Confirm the four sites.**
+- [x] **Step 1 — Confirm the four sites.**
       `grep -cin 'thin feature' .claude/skills/sdd/SKILL.md`
       Expected: `4`.
 
-- [ ] **Step 2 — Add the baseline contract to both gate prompts.** Each gains three elements
+- [x] **Step 2 — Add the baseline contract to both gate prompts.** Each gains three elements
       before its instructions: the exact `git diff` the controller intends to commit, pasted in;
       the declared known-dirty paths, by name; and the pipeline position, verbatim — *"the commit
       does not exist yet; `PROGRESS.md` and `log.txt` are written after you pass. Their absence is
       never a gap."*
 
-- [ ] **Step 3 — Replace tiering at all four sites.** Step 3's paragraph, Step 4's gate decision,
+- [x] **Step 3 — Replace tiering at all four sites.** Step 3's paragraph, Step 4's gate decision,
       Step 5's re-review exception, and Step 7's log template all switch from thin-feature tiering
       to the layer-based rule, citing `.claude/repo-profile.md` § Gate risk tiers as its source
       rather than restating the criteria.
 
-- [ ] **Step 4 — Swap the pasted packet for core + slice, at all three sites.** Step 0 item 6
+- [x] **Step 4 — Swap the pasted packet for core + slice, at all three sites.** Step 0 item 6
       (which currently tells the controller to read and regenerate the monolithic packet), the
       Step 2 implementer prompt, and the Gate B prompt. The rule: paste the core plus the one
       slice matching this task's `[Layer]` tag; where no slice matches the tag, paste the core
       alone and say so — never guess a slice.
 
-- [ ] **Step 5 — Tell subagents to report an insufficient slice.** Add one line to the implementer
+- [x] **Step 5 — Tell subagents to report an insufficient slice.** Add one line to the implementer
       and Gate B prompts: if the slice lacks something the task needs, report that rather than
       guessing, so the slice gets corrected.
 
-- [ ] **Step 6 — Move `REFERENCE.md` ownership to the controller.** Remove instruction 4 from the
+- [x] **Step 6 — Move `REFERENCE.md` ownership to the controller.** Remove instruction 4 from the
       implementer prompt. Add a controller step updating `REFERENCE.md` **after the implementer
       returns and before the gates are dispatched**, so the edit sits inside the diff the gates
       review. Leave Gate A's `REFERENCE.md` check in place. The controller reads only the section
@@ -346,16 +346,16 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > matches its contract. Only the ceremony goes: throwaway `*.probe.tsx` / `lib/__probe/` files and
 > the computed column-number formula.
 
-- [ ] **Step 1 — Confirm the skill currently forbids Playwright.**
+- [x] **Step 1 — Confirm the skill currently forbids Playwright.**
       `grep -c playwright .claude/skills/writing-plans/SKILL.md`
       Expected: `2`.
 
-- [ ] **Step 2 — Correct the repo table.** Replace the **Test framework** row: no unit-test runner
+- [x] **Step 2 — Correct the repo table.** Replace the **Test framework** row: no unit-test runner
       still, but `@playwright/test` is installed and `npx playwright test e2e/<spec>` is the
       behavioral gate. Remove `playwright` from the list of commands not to write into plans.
       Point the row at `.claude/repo-profile.md` rather than restating every command.
 
-- [ ] **Step 3 — Rewrite "Test-first without a test runner" for contracts.** The phrase occurs
+- [x] **Step 3 — Rewrite "Test-first without a test runner" for contracts.** The phrase occurs
       **twice** — the section heading and a cross-reference in the Test framework row — and Step 8
       expects both gone. Per design §2, a step
       names the file, exported signature, behavior, edge cases, negative constraints, and
@@ -363,23 +363,23 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       verbatim as the reference shape. **Keep** the red→green loop: write the call site, expect a
       quoted `TS2305`/`TS2307`, implement, expect exit 0.
 
-- [ ] **Step 4 — Delete only the ceremony.** Remove the instruction to create throwaway probe
+- [x] **Step 4 — Delete only the ceremony.** Remove the instruction to create throwaway probe
       files, and the column-number prediction. State that `Expected:` lines match on error code and
       message, not on the column.
 
-- [ ] **Step 5 — Scope the build command.** `npx tsc --noEmit` + `npm run lint` are the default
+- [x] **Step 5 — Scope the build command.** `npx tsc --noEmit` + `npm run lint` are the default
       pair; `npm run build` is added only for routes, config, or dependencies. Cite the profile.
 
-- [ ] **Step 6 — Add the Playwright step format.** For behavior a compiler cannot see, the
+- [x] **Step 6 — Add the Playwright step format.** For behavior a compiler cannot see, the
       verification step is `npx playwright test e2e/<spec>.spec.ts` with an expected `N passed` —
       replacing the manual browser checks that were never performed.
 
-- [ ] **Step 7 — Update Provenance.** Correct the "No test runner" row to record
+- [x] **Step 7 — Update Provenance.** Correct the "No test runner" row to record
       `@playwright/test` as installed, dated today, verified by `npx playwright --version`. Leave
       the "Typecheck failure format" row intact — the red step it documents is being kept, and it
       is the only line in this file containing the word "probe".
 
-- [ ] **Step 8 — Verify by section heading, not by the word "probe".**
+- [x] **Step 8 — Verify by section heading, not by the word "probe".**
       `grep -c 'Test-first without a test runner' .claude/skills/writing-plans/SKILL.md`
       Expected: `0` — the section was renamed.
       `grep -c 'TS2305' .claude/skills/writing-plans/SKILL.md`
@@ -397,23 +397,23 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 - modify: `.claude/skills/writing-plans/references/PLAN-TEMPLATES.md`
 - test: `grep -c` assertions below
 
-- [ ] **Step 1 — Confirm the probe ceremony is present.**
+- [x] **Step 1 — Confirm the probe ceremony is present.**
       `grep -ci probe .claude/skills/writing-plans/references/PLAN-TEMPLATES.md`
       Expected: `2` — both inside template 2.
 
-- [ ] **Step 2 — Rewrite template 2 as the contract template.** Files manifest, one contract block
+- [x] **Step 2 — Rewrite template 2 as the contract template.** Files manifest, one contract block
       per file, the kept red→green compiler steps, verification. No function bodies.
 
-- [ ] **Step 3 — Add a Playwright task template.** Write the spec, run
+- [x] **Step 3 — Add a Playwright task template.** Write the spec, run
       `npx playwright test e2e/<spec>.spec.ts`, expect `N passed`.
 
-- [ ] **Step 4 — Correct the header and command table.** The header's "no test runner installed"
+- [x] **Step 4 — Correct the header and command table.** The header's "no test runner installed"
       and the "There is **no** `npm test` in this repo" line must both reflect the new
       `test:e2e` script.
 
-- [ ] **Step 5 — Leave the refactor template unchanged.** It is still correct.
+- [x] **Step 5 — Leave the refactor template unchanged.** It is still correct.
 
-- [ ] **Step 6 — Verify.**
+- [x] **Step 6 — Verify.**
       `grep -ci probe .claude/skills/writing-plans/references/PLAN-TEMPLATES.md` → Expected: `1`
       — the rule telling an implementer *not* to create a throwaway probe file. (Corrected during
       execution, same reason as Task 7 Step 8: a prohibition must name what it prohibits.)
@@ -437,14 +437,14 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > advertising a capability it no longer has, while Task 10 corrects the same wording in
 > `AGENTS.md`, producing exactly the drift this plan exists to remove.
 
-- [ ] **Step 1 — Confirm both counts.**
+- [x] **Step 1 — Confirm both counts.**
       `grep -c 'Unit-test mapping' .claude/skills/feature-spec/SKILL.md` → Expected: `4`.
       `grep -cin 'unit-test mapping' .claude/skills/feature-spec/SKILL.md` → Expected: `6`.
 
-- [ ] **Step 2 — Convert all six occurrences** to Playwright scenario mapping, including the
+- [x] **Step 2 — Convert all six occurrences** to Playwright scenario mapping, including the
       frontmatter `description:` and the SA role table row.
 
-- [ ] **Step 3 — Rewrite Phase 4's body.** It maps each acceptance criterion to a Playwright spec
+- [x] **Step 3 — Rewrite Phase 4's body.** It maps each acceptance criterion to a Playwright spec
       file and test name, feeding the plan's verification steps directly.
 
 - [x] **Step 4 — Compact Phase 5.** *Not needed as specified.* Phase 5 was already a table plus
@@ -454,11 +454,11 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
       became `Verified by`, taking an `E2E-` id or `compiler`, and a fifth list catches any AC that
       nothing can verify.
 
-- [ ] **Step 5 — Update Phase 0's runner check.** It currently inspects `package.json` for a
+- [x] **Step 5 — Update Phase 0's runner check.** It currently inspects `package.json` for a
       unit-test runner. It now cites `.claude/repo-profile.md` § Behavioral gate as the source of
       truth, rather than inlining the fact.
 
-- [ ] **Step 6 — Verify the rename is complete, case-insensitively.**
+- [x] **Step 6 — Verify the rename is complete, case-insensitively.**
       `grep -cin 'unit-test mapping' .claude/skills/feature-spec/SKILL.md` → Expected: `0`.
       `grep -cin 'playwright scenario mapping' .claude/skills/feature-spec/SKILL.md`
       → Expected: `6` (Playwright is a proper noun; all six read "Playwright scenario mapping").
@@ -476,30 +476,30 @@ Data: browser local storage — no backend. Verification: `npm run lint`, `npx t
 > Last deliberately — these documents can only be made accurate once the pipeline behaves the new
 > way. Leave `AGENTS.md`'s top block alone; `next dev` regenerates it.
 
-- [ ] **Step 1 — Confirm the current rule count.**
+- [x] **Step 1 — Confirm the current rule count.**
       `grep -c 'Three rules keep the token/time cost' CLAUDE.md`
       Expected: `1`.
 
-- [ ] **Step 2 — Rewrite the cost-optimization rules** as the current set: sliced context packet;
+- [x] **Step 2 — Rewrite the cost-optimization rules** as the current set: sliced context packet;
       thin features skip `/feature-spec` (feature-level only — it no longer decides gate count);
       plans carry contracts, not code; gate count is risk-tiered by task layer; Playwright is the
       behavioral gate.
 
-- [ ] **Step 3 — Add the clean-tree precondition** to the per-feature loop's step 1.
+- [x] **Step 3 — Add the clean-tree precondition** to the per-feature loop's step 1.
 
-- [ ] **Step 4 — Add `.claude/repo-profile.md` to Source of truth**, described as where this
+- [x] **Step 4 — Add `.claude/repo-profile.md` to Source of truth**, described as where this
       repo's verification commands, gate tiers, and known-dirty paths live.
 
-- [ ] **Step 5 — Correct `AGENTS.md`.** Its Feature Implementation Workflow section describes
+- [x] **Step 5 — Correct `AGENTS.md`.** Its Feature Implementation Workflow section describes
       `/feature-spec` as producing "unit-test mapping" (Task 9 removed that). Update to
       "Playwright scenario mapping" and note the clean-tree precondition in the `/sdd` bullet.
 
-- [ ] **Step 6 — Verify.**
+- [x] **Step 6 — Verify.**
       `grep -c 'repo-profile' CLAUDE.md` → Expected: `1` or greater.
       `grep -ci 'contracts, not code' CLAUDE.md` → Expected: `1` or greater.
       `grep -cin 'unit-test mapping' AGENTS.md` → Expected: `0`.
 
-- [ ] **Step 7 — Final regression run.**
+- [x] **Step 7 — Final regression run.**
       `npx tsc --noEmit` → Expected: exit 0, no output.
       `npm run lint` → Expected: exit 0, no output beyond npm's banner.
       `npm run build` → Expected: exit 0, ending with the route table.
@@ -525,7 +525,7 @@ For each task:
    `.claude/repo-profile.md`.
 4. Commit the task.
 5. Update this plan and the adjacent `log.txt` before starting the next task: tick the task's
-   checkboxes, set `**Status:** In Progress` on the first completion, and append a log entry with
+   checkboxes, set `**Status:** Complete` on the first completion, and append a log entry with
    Completed / Summary / Key Decisions / Deviations / Files Changed.
 
 Commit message format — Conventional Commits. This plan has no feature number, so the scope is
@@ -539,3 +539,42 @@ Commit message format — Conventional Commits. This plan has no feature number,
     Spec: docs/superpowers/specs/2026-09-12-ai-workflow-optimization-design.md
 
 Never commit on a failing lint, typecheck, or build.
+
+---
+
+## Completion Summary
+
+**What was built.** Playwright is installed, configured, and proven by a four-test spec against
+feature 010 that runs in ~2.4s. `.claude/repo-profile.md` now holds this repo's verification
+commands, behavioral gate, layer slices, known-dirty paths, and gate risk tiers, and the three
+skills cite it instead of carrying copies. The 12,255-byte context packet is a 2,989-byte core plus
+five layer slices. `/sdd` refuses a dirty tree, opens every gate prompt with a baseline contract,
+tiers gate count by task layer, and owns the `REFERENCE.md` update at a new Step 2b placed before
+gate dispatch. `/writing-plans` and its templates state contracts rather than function bodies, keep
+the compiler red step, and scope `npm run build` to route/config/dependency tasks.
+`/feature-spec` maps acceptance to Playwright specs.
+
+**Deviations from the plan.** Six, each recorded inline at its step:
+
+- Task 1 Step 1 — `npx playwright --version` cannot prove absence; `npx` installs a missing package
+  to answer the query. Replaced with `package.json` + `node_modules/.bin` checks.
+- Task 5 Step 5 — asserted a proxy string (`working tree`) that did not match how Step 0's item
+  actually reads. Replaced with two assertions naming the real sites.
+- Task 6 Step 7 — the baseline block was written once as a shared template with a pointer in each
+  gate prompt, rather than duplicated; assertion changed to match that better shape.
+- Task 6 Step 8 — `thin feature` → `0` was wrong; the surviving mention is the precedence statement,
+  which must name the rule it overrides.
+- Tasks 7 Step 8 / 8 Step 6 — `probe` → `0` was unreachable: the new rule prohibiting throwaway
+  probe files has to name them.
+- Task 9 Step 4 — Phase 5 was already a table, not prose. Compacting it would have weakened the
+  "count obligations, not identifiers" gate rule. Made the change actually needed instead
+  (`Verified by` column, plus an unverifiable-AC list).
+
+**Follow-ups not in scope.** Spec size (23–36 KB, read by three parallel passes *and* pasted into
+Gate A) is a larger lever than any skill edit here and is untouched. The ~40% estimate remains an
+inference from artifact sizes, not a measurement — the next real feature run is what would confirm
+it.
+
+**Final verification.** `npx tsc --noEmit` exit 0, no output. `npm run lint` exit 0, banner only.
+`npm run build` exit 0, 8-route table unchanged. `npx playwright test e2e/010-categories.spec.ts`
+exit 0, `4 passed`.

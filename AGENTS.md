@@ -15,15 +15,18 @@ carry each `features/NNN.*.md` spec through three skills, one per stage — do n
 a feature straight from its spec:
 
 1. **`/feature-spec <NNN>`** — gated BA/SA analysis of that one feature: BDD acceptance criteria,
-   unit-test mapping, an AC verification matrix, and a contrarian review. Writes
+   Playwright scenario mapping, an AC verification matrix, and a contrarian review. Writes
    `doc/spec/{feature-name}.md`.
 2. **`/writing-plans`** — turns that spec into a numbered, task-by-task `plan.md` (a Files
    manifest plus a literal verification command and its exact expected output on every step),
-   saved beside the spec.
+   saved beside the spec. Plans state **contracts, not function bodies** — the implementer writes
+   the code, so the review gates review work they did not author.
 3. **`/sdd <path-to-plan.md>`** — executes the plan task-by-task via fresh subagents, gated by
-   two independent reviews (spec compliance, code quality) before each task is committed.
-   Persists resumable state (`PROGRESS.md`, `log.txt`) beside the plan, so a run survives a
-   session restart mid-plan.
+   independent review before each task is committed: two gates for tasks touching types, data,
+   domain, `lib/`, or a module boundary; one combined gate for pure UI and route wiring. Requires
+   a **clean working tree** (or declared dirty paths) before it starts — every reviewer sees the
+   same `git status`, so undeclared changes produce wrong-baseline findings. Persists resumable
+   state (`PROGRESS.md`, `log.txt`) beside the plan, so a run survives a session restart mid-plan.
 
 Only the controller session — never a subagent — commits, and only after both `/sdd` review
 gates pass. See `.claude/skills/sdd/SKILL.md` for the exact loop, including its two-strikes

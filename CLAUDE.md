@@ -10,6 +10,7 @@ This project is implemented feature-by-feature from the specs in [features/](fea
 - [features/OVERVIEW.md](features/OVERVIEW.md) sections 1–3 (Product Overview, Confirmed Requirements, Assumptions to Confirm) are the standing context — re-read them before implementing any feature, since individual feature files assume this context and don't repeat it.
 - [design.md](design.md) is the design system — color/type/spacing tokens, component and interaction-state patterns, motion and icon policy. Read it before implementing or touching any UI, alongside REFERENCE.md and OVERVIEW.md. It governs how things look and behave; it never overrides a feature spec's functional scenarios, and it does not introduce dependencies beyond what REFERENCE.md §2 already lists.
 - Each `features/NNN.{feature-name}.md` file is one unit of work: its Gherkin scenarios are the acceptance criteria for that feature. Implement all scenarios in a feature file together, not one scenario at a time.
+- [.claude/repo-profile.md](.claude/repo-profile.md) is where this repo's own pipeline facts live — verification commands and when each applies, the behavioral gate, layer slices, known-dirty paths, and gate risk tiers. The skills cite it rather than carrying copies, so fix it there when something changes.
 - Per [AGENTS.md](AGENTS.md), read the relevant guide under `node_modules/next/dist/docs/` before writing code that touches a Next.js API you're unsure of — this repo's Next.js version has breaking changes vs. training data.
 
 ## Implementation order
@@ -43,7 +44,7 @@ For each feature file, in the order above, drive it through the pipeline defined
 `/writing-plans` → `/sdd`. This section only adds the per-feature status check and what to do
 on failure; it does not repeat the pipeline mechanics documented there.
 
-1. **Check status.** Run `git log --oneline --grep="^feat(<NNN>)"` to confirm the feature hasn't already been committed. If [output/error/](output/error/) has a file for this feature from a prior failed attempt, read it first — it likely explains why the last attempt didn't land.
+1. **Check status and the tree.** Run `git log --oneline --grep="^feat(<NNN>)"` to confirm the feature hasn't already been committed. Also confirm the working tree is clean, or that any dirty tracked paths are declared — `/sdd` now refuses to start otherwise, because every reviewer sees the same `git status` and undeclared changes produce wrong-baseline gate findings. If [output/error/](output/error/) has a file for this feature from a prior failed attempt, read it first — it likely explains why the last attempt didn't land.
 2. **`/feature-spec <NNN>`** → gated BA/SA spec at `doc/spec/{feature-name}.md`.
    _(Thin-feature shortcut: if the feature file has ≤2 Gherkin scenarios and introduces no new
    storage key or module boundary, skip this step and pass the feature file straight to
@@ -57,23 +58,37 @@ Never let a failing build reach git history. Later features are built on top of 
 
 ## Cost optimization
 
-Three rules keep the token/time cost of this loop down without weakening its gates. The skills
+Five rules keep the token/time cost of this loop down without weakening its gates. The skills
 enforce them; this section is the standing summary.
 
-1. **Read standing context once per session.** `REFERENCE.md` §2/§4/§6, `OVERVIEW.md` §1–3, and
-   `design.md` (~33 KB) are distilled into a repo context packet at
-   `/memories/repo/travel-expense-context.md`. Subagents receive the packet, not the raw files;
-   re-read the raw files only when a task modifies them. If the packet is missing or stale, a
-   subagent may regenerate it in the same change that updates the source file.
-2. **Thin features skip `/feature-spec`.** A feature file with ≤2 Gherkin scenarios and no new
-   storage key or module boundary goes straight to `/writing-plans`, and `/sdd` runs a single
-   combined review gate instead of two. A full three-stage pass is still required for
-   architectural features (e.g. 012 storage, 009 dashboard, any new module boundary or storage
+1. **Read standing context once per session.** Subagents receive the core packet at
+   `memories/repo/travel-expense-context.md` (~3 KB) plus **one** layer slice from
+   `memories/repo/slices/` chosen by the task's `[Layer]` tag (~1.5–2.5 KB) — not the raw
+   `REFERENCE.md`/`OVERVIEW.md`/`design.md`, and not the old 12 KB monolithic packet. Where no
+   slice matches the tag, the dispatch gets the core alone; never guess a slice. Re-read the raw
+   files only when a task modifies them, and refresh the core or affected slice in that same change.
+2. **Plans carry contracts, not code.** A plan states each file's exported signature, behavior,
+   edge cases, negative constraints, and verification command — not the function body. The
+   implementer writes the code, so the review gates review work they did not author. The compiler
+   red step stays: `TS2305` asserts a named export's shape, which is the one mechanical check that
+   an implementation matches its contract.
+3. **Gate count is risk-tiered per task, not per feature.** Two independent gates for tasks
+   touching types, data, domain, `lib/`, or a module boundary; one combined gate for pure UI and
+   route wiring. `.claude/repo-profile.md` § Gate risk tiers is the source. Task-level tiering
+   outranks rule 4 — a task touching `lib/` gets two gates even inside a thin feature.
+4. **Thin features skip `/feature-spec`.** A feature file with ≤2 Gherkin scenarios and no new
+   storage key or module boundary goes straight to `/writing-plans`. This governs *only* whether
+   the spec stage runs; it no longer decides gate count. A full three-stage pass is still required
+   for architectural features (e.g. 012 storage, 009 dashboard, any new module boundary or storage
    contract).
-3. **Fan out the `writing-plans` review passes.** Passes A.5, B, and C run in parallel against the
+5. **Fan out the `writing-plans` review passes.** Passes A.5, B, and C run in parallel against the
    frozen plan, then reconcile — same tokens, less wall-clock. `/sdd` tasks and features stay
    sequential: task order is a dependency chain (each task's typecheck passes only after the prior
    one), and features are built in the order above.
+
+**Playwright is the behavioral gate.** Anything a compiler cannot see — a banner, a redirect, a
+chart, a responsive layout — is verified by a spec in `e2e/`, never by a manual browser checklist
+that nobody runs. There is still no unit-test runner.
 
 ## Progress tracking
 
