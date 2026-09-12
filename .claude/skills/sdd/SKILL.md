@@ -1,11 +1,11 @@
 ---
 name: sdd
-description: "Execute an implementation plan (plan.md with numbered tasks) one task at a time via fresh subagents, gated by two independent reviews (spec compliance, code quality) before anything is committed. Use when asked to run/execute a plan with subagents, 'subagent-driven development', or to drive a plan.md produced by the writing-plans skill through to completion autonomously. Persists resumable state to PROGRESS.md and log.txt beside the plan. Does not write plans (see writing-plans) and does not review already-merged code (see code-review)."
+description: "Execute an implementation plan (plan.md with numbered tasks) one task at a time via fresh subagents, gated by independent review (spec compliance, code quality) before anything is committed. Use when asked to run/execute a plan with subagents, 'subagent-driven development', or to drive a plan.md produced by the writing-plans skill through to completion autonomously. Persists resumable state to PROGRESS.md and log.txt beside the plan. Does not write plans (see writing-plans) and does not review already-merged code (see code-review)."
 ---
 
 # /sdd
 
-Execute a `plan.md` task-by-task using **fresh subagents** for implementation and **two independent review gates** per task, with the controller (this session, never a subagent) owning every commit. This replaces the solo "## Execution" loop that `writing-plans` appends to its plans — leave that section in the plan file as-is, just don't follow it while `/sdd` is driving.
+Execute a `plan.md` task-by-task using **fresh subagents** for implementation and **independent review gates** per task (how many is risk-tiered — see Step 3), with the controller (this session, never a subagent) owning every commit. This replaces the solo "## Execution" loop that `writing-plans` appends to its plans — leave that section in the plan file as-is, just don't follow it while `/sdd` is driving.
 
 ## Usage
 
@@ -21,10 +21,11 @@ These are non-negotiable — do not shortcut them under time pressure or when a 
 
 1. **One task in flight at a time.** Never start task N+1 while task N's implementation or review is still in progress. Within a task, the two review gates run **in parallel** (dispatched in the same message, not sequentially).
 2. **Fresh subagent per task.** Every implementer and every reviewer is a brand-new `Agent` call with no memory of prior tasks. Its prompt must contain the full task text and every piece of context it needs, pasted in — never "see the plan we discussed" or "as before." The implementer is explicitly told not to run `git add` or `git commit`.
-3. **Two mandatory review gates**, each a separate fresh subagent that reads the actual changed files itself (`git status`, `git diff`, then `Read` the full files) — never trusts the implementer's self-reported summary:
-   - **Spec/requirements reviewer** — did it build what the task and source spec asked for; lists gaps.
-   - **Code-quality reviewer** — is it correct and consistent with this codebase's own patterns; lists bugs/issues.
-     Both must return `PASS` before the task can be committed.
+3. **Mandatory independent review**, never skipped — each gate a separate fresh subagent that reads the actual changed files itself (`git status`, `git diff`, then `Read` the full files) and never trusts the implementer's self-reported summary. Two concerns are always covered:
+   - **Spec/requirements** — did it build what the task and source spec asked for; lists gaps.
+   - **Code quality** — is it correct and consistent with this codebase's own patterns; lists bugs/issues.
+
+   **How many subagents carry them is risk-tiered per task** — two separate gates, or one combined gate for pure UI/route wiring. Step 3 and [`.claude/repo-profile.md`](../../repo-profile.md) § Gate risk tiers own that decision. What is non-negotiable is that both concerns are reviewed by someone who did not write the code, and that every gate returns `PASS` before the task is committed.
 4. **Persistent, file-based state**: `PROGRESS.md` (one checkbox per task) and `log.txt` (append-only, one entry per completed task) live beside `plan.md`. Update both **only after both gates pass and the commit exists** — this is what makes a run resumable after the session dies mid-plan. Do not use the in-session todo list as a substitute; it does not survive a restart.
 5. **The controller commits, never a subagent.** No implementer or reviewer subagent ever runs `git add`/`git commit`. This session stages, reviews the diff, and commits only after both gates are green.
 6. **Dispatch gate before every task** (including the first): confirm the previous task's checkbox, log entry, commit, and both gate verdicts all agree before starting the next one.

@@ -50,7 +50,7 @@ on failure; it does not repeat the pipeline mechanics documented there.
    storage key or module boundary, skip this step and pass the feature file straight to
    `/writing-plans` — see Cost optimization below.)_
 3. **`/writing-plans`** against that spec → `doc/features/{NNN}-{slug}/plan.md`.
-4. **`/sdd <path-to-plan.md>`** to execute it. `/sdd` owns implementation (via fresh subagents per task), the two independent review gates, and every commit — this loop just reacts to its outcome:
+4. **`/sdd <path-to-plan.md>`** to execute it. `/sdd` owns implementation (via fresh subagents per task), the review gates — two for tasks touching types, data, domain, `lib/` or a module boundary; one combined gate for pure UI and route wiring — and every commit — this loop just reacts to its outcome:
    - **Plan reaches `**Status:** Complete`** → proceed to the next feature.
    - **`/sdd` escalates** (a task fails its two allowed attempts in a row) — it has already stopped and reported what was tried and what the review gates found. Read that report and attempt a genuine root-cause fix — not `@ts-ignore`, not `eslint-disable`, not deleting the failing code, not `--no-verify`. Resume `/sdd` on the same plan. Allow up to 3 total attempts (1 initial + 2 fix attempts) per feature. If still failing after 3 attempts, **stop the loop** and report to the user — do not proceed to the next feature.
 
