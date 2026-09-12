@@ -4,7 +4,10 @@
 
 The Travel Expense Tracker is a mobile-first, browser-responsive web application that helps users track expenses during a trip.
 
-The app stores all data in browser local storage. It does not use a backend service, SQL database, or external database.
+The app stores all data in browser local storage for trips that are not shared. Starting with
+feature 16, a trip a creator has generated a shareable link for is instead stored server-side,
+backed by an API and a database, so the friends who join it see the same data. A trip that is
+never shared stays on local storage exactly as before, with no backend involved.
 
 The app supports one active trip at a time. When a new trip is created, the previous trip and its related data will be deleted after user confirmation.
 
@@ -15,9 +18,34 @@ The app supports one active trip at a time. When a new trip is created, the prev
 - The app is mainly used on mobile.
 - The app must also be responsive on desktop browsers.
 - The app is a web app only, not a Progressive Web App.
-- Data is stored in browser local storage.
-- The app works offline after it has been loaded.
+- Data is stored in browser local storage, unless the trip has been shared (see below).
+- The app works offline after it has been loaded, for trips that have not been shared.
 - The app supports one active trip at a time.
+- A trip becomes server-backed the moment its creator generates a shareable link (feature 16);
+  an unshared trip remains in local storage exclusively.
+- Generating or regenerating a shared trip's link requires connectivity; it is not available offline.
+- Only the trip creator can generate or regenerate a shared trip's link.
+- Joining a shared trip via link also requires connectivity; it is not available offline.
+- Joining a trip is identity-by-device: the joining browser is remembered as that participant for
+  that trip, with no login, password, or account system.
+- There is no cap on the number of participants who can join a shared trip via one link.
+- Participant display names are not required to be unique and are limited to 50 characters.
+- A participant who joins via link has no elevated permissions beyond being listed on the trip;
+  only the trip creator can edit trip details or manage the share link.
+- A user's set of trips is the union of their own solo trip, shared trips they created, and shared
+  trips they joined; a trip switcher lets them view and switch between all of these, shown only
+  when they belong to more than one trip.
+- Creating a new solo trip only replaces the solo trip; it never removes shared-trip memberships.
+- Only the trip creator can remove other participants from a shared trip; any non-creator
+  participant can leave voluntarily, but the creator cannot leave their own trip.
+- Removing or leaving does not rewrite past recorded expenses; they keep the departed
+  participant's name, consistent with the deleted-custom-category precedent in §3.
+- Shared-trip expenses support attributing a payer and splitting among participants, either
+  evenly or by exact amount (no percentage splits in v2); solo trips have no payer/split fields.
+- Trip balances (who owes whom) are always shown converted into the trip currency and simplified
+  to the minimum number of settlements; they are incomplete if any used currency lacks a rate.
+- Either party to a balance can mark it settled (fully or partially) unilaterally; settling
+  records that payment happened outside the app and does not move real money.
 - Trip setup appears on first launch.
 - Users can edit trip details after setup.
 - Users can create a new trip, which deletes the existing trip.
@@ -108,3 +136,10 @@ Each feature's Gherkin scenarios live in its own file under `features/`:
 | 13 | Reset App Data | [013.reset-app-data.md](013.reset-app-data.md) |
 | 14 | Export Expenses | [014.export-expenses.md](014.export-expenses.md) |
 | 15 | Mobile Responsive Navigation | [015.mobile-responsive-navigation.md](015.mobile-responsive-navigation.md) |
+| 16 | Generate Shareable Trip Link | [016.generate-shareable-trip-link.md](016.generate-shareable-trip-link.md) |
+| 17 | Join a Shared Trip via Link | [017.join-a-shared-trip-via-link.md](017.join-a-shared-trip-via-link.md) |
+| 18 | Switch Between Multiple Trips | [018.switch-between-multiple-trips.md](018.switch-between-multiple-trips.md) |
+| 19 | Manage Trip Participants | [019.manage-trip-participants.md](019.manage-trip-participants.md) |
+| 20 | Attribute an Expense to Payer and Split | [020.attribute-an-expense-to-payer-and-split.md](020.attribute-an-expense-to-payer-and-split.md) |
+| 21 | View Trip Balances | [021.view-trip-balances.md](021.view-trip-balances.md) |
+| 22 | Settle Up a Balance | [022.settle-up-a-balance.md](022.settle-up-a-balance.md) |

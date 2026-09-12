@@ -13,6 +13,21 @@ This project is implemented feature-by-feature from the specs in [features/](fea
 - [.claude/repo-profile.md](.claude/repo-profile.md) is where this repo's own pipeline facts live — verification commands and when each applies, the behavioral gate, layer slices, known-dirty paths, and gate risk tiers. The skills cite it rather than carrying copies, so fix it there when something changes.
 - Per [AGENTS.md](AGENTS.md), read the relevant guide under `node_modules/next/dist/docs/` before writing code that touches a Next.js API you're unsure of — this repo's Next.js version has breaking changes vs. training data.
 
+## New requirements arrive in prose
+
+Everything below assumes the feature file already exists. When a requirement instead arrives as plain
+language — "users should be able to split a bill", a stakeholder sentence, a one-line ask — it enters
+the pipeline through **`/feature-discovery`**, which is the only way a new `features/NNN.*.md` gets
+written. Do not hand-author a feature file, and do not run `/feature-spec` against a prose
+requirement.
+
+It runs in two modes, and the split is deliberate: `/feature-discovery "<requirement>"` produces the
+impact analysis and the feature breakdown at `doc/requirements/{YYYY-MM-DD}-{slug}.md` and then
+stops; `/feature-discovery <NNN>` brainstorms that one feature's edge cases with the user through a
+ten-category taxonomy and writes its feature file, its `## Assumptions` / `## Out of Scope` /
+`## Deferred` sections, and its rows in OVERVIEW §2/§4, REFERENCE §7, and the order table below. One
+feature per invocation. It never writes application code and never commits.
+
 ## Implementation order
 
 Features are numbered by spec/reading order, not build order. Build foundation and shared pieces first so later features don't need rework:
@@ -34,6 +49,13 @@ Features are numbered by spec/reading order, not build order. Build foundation a
 | 13    | `009.home-dashboard.md`                  | Aggregates trip, expenses, categories, rates, budget   |
 | 14    | `013.reset-app-data.md`                  | Touches all data types — safest once they all exist    |
 | 15    | `014.export-expenses.md`                 | Touches all expense fields — safest last               |
+| 16    | `016.generate-shareable-trip-link.md`    | First slice of the v2 shared-trip initiative — introduces server-backed storage for shared trips; nothing else in v2 works without it |
+| 17    | `017.join-a-shared-trip-via-link.md`     | Second slice of v2 — a link only matters once a friend can actually join through it |
+| 18    | `018.switch-between-multiple-trips.md`   | Multi-trip membership only exists once joining is possible; needed before later features assume more than one trip per device |
+| 19    | `019.manage-trip-participants.md`        | Extension of membership; needed before split/attribution logic must handle removal |
+| 20    | `020.attribute-an-expense-to-payer-and-split.md` | Needs real participants to attribute expenses to |
+| 21    | `021.view-trip-balances.md`              | Needs split data to compute balances from |
+| 22    | `022.settle-up-a-balance.md`             | Needs balances to settle against; completes the v2 shared-trip initiative |
 
 Do not reorder or skip features without an explicit user request. Do not implement scenarios or features beyond what's written in the spec files.
 

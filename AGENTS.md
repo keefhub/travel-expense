@@ -14,6 +14,11 @@ For any task that means "implement the next feature," "continue implementation,"
 carry each `features/NNN.*.md` spec through three skills, one per stage — do not hand-implement
 a feature straight from its spec:
 
+0. **`/feature-discovery`** — stage 0, and only when there is **no** `features/NNN.*.md` yet: a
+   requirement that arrived as plain prose is analysed against the codebase, split into
+   right-sized features, and turned into `features/NNN.{slug}.md` files whose edge cases were
+   confirmed with the user. Never author a feature file by hand, and never skip straight to
+   `/feature-spec` from a prose requirement. Skip this stage entirely when the feature file exists.
 1. **`/feature-spec <NNN>`** — gated BA/SA analysis of that one feature: BDD acceptance criteria,
    Playwright scenario mapping, an AC verification matrix, and a contrarian review. Writes
    `doc/features/{NNN}-{slug}/spec.md`.
