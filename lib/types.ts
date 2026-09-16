@@ -26,3 +26,9 @@ export interface ExchangeRate {
   currency: string;
   rate: number;
 }
+
+export interface SharedTripLink {
+  tripId: string;
+  shareToken: string;
+  creatorToken: string;
+}
