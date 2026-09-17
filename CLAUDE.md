@@ -81,39 +81,19 @@ session. Concretely:
   across sessions; conversation memory may not.
 - When a feature's loop ends (success or the 3-attempt escalation stop below), the session ends
   too — do not begin step 1 for the next feature file in this same conversation, even if asked to
-  keep going. If this session was started manually, state the outcome and tell the user to start a
-  new session for the next feature. If this session was started by a recurring `/loop` firing (see
-  below), just end — the next firing supplies the new session.
+  keep going. State the outcome and tell the user to start a new session for the next feature.
 - This is a hard stop, not a suggestion the user can wave off mid-session — if a completed session
   is asked to "just do the next one too," decline and restate that the next feature needs a new
   session.
-
-### Chaining features automatically with `/loop`
-
-To run this workflow unattended across several features, use `/loop` with an **explicit
-interval** (e.g. `/loop 45m "continue implementation"`), not the interval-less self-pacing form.
-The two forms behave differently in a way that matters here:
-
-- **Interval-less / self-pacing `/loop`** resumes work by waking the *same* conversation later
-  (`ScheduleWakeup`) — it is one continuous session across firings. Do not use this form for
-  chaining features; it violates "one feature per session" above.
-- **Fixed-interval `/loop`** fires the given prompt on a schedule as an independent run each
-  time. Each firing is the "new session" the rule above requires — it starts cold at step 1,
-  re-derives what's next purely from git state, and ends when that one feature's loop ends.
-
-Practical notes for setting the interval and for stopping:
-
-- Pick an interval comfortably longer than one feature's full pipeline usually takes (`/feature-spec`
-  → `/writing-plans` → `/sdd`, including up to 3 attempts). Too short risks a firing landing while
-  the previous feature's session is still mid-`/sdd`; step 1's clean-working-tree check is the
-  safety net in that case — a firing that finds a dirty, undeclared tree must stop and report
-  rather than starting work on top of an in-progress run, not silently retry or force past it.
-- Each firing's prompt should be the same standing instruction (e.g. "continue implementation" or
-  "implement the next feature") — the specific `NNN` is decided by step 1's `git log` check
-  inside that firing, never hardcoded into the loop prompt.
-- Once every row in the Implementation order table above has a matching `feat(<NNN>)` commit, or
-  a feature has hit the 3-attempt escalation stop, cancel the recurring loop instead of leaving it
-  firing against a repo with nothing left to do (or that needs a human to unblock the failure).
+- **Do not chain features automatically with `/loop`, `CronCreate`, or any other recurring or
+  scheduled trigger.** This was tried and removed after it caused a real incident: a recurring
+  "continue implementation" job fires a cold session that re-derives "what's next" purely from
+  git state, but `PROGRESS.md`/`log.txt` — the only signal that a feature is already mid-flight —
+  are gitignored, per-checkout run state, invisible to git log. Overlapping firings (or a leftover
+  job plus a manually-started session) landed multiple independent sessions on the same plan at
+  once, each running its own `/sdd`, overwriting each other's edits to the same files and racing
+  on commits. Start each feature's session explicitly, one at a time, and confirm no other session
+  is already active on this repo before starting one.
 
 1. **Check status and the tree.** Run `git log --oneline --grep="^feat(<NNN>)"` to confirm the feature hasn't already been committed. Also confirm the working tree is clean, or that any dirty tracked paths are declared — `/sdd` now refuses to start otherwise, because every reviewer sees the same `git status` and undeclared changes produce wrong-baseline gate findings. If [output/error/](output/error/) has a file for this feature from a prior failed attempt, read it first — it likely explains why the last attempt didn't land. Each feature's `spec.md`, `plan.md`, and `log.txt` live together in [doc/features/](doc/features/)`<NNN>-<slug>/` — see [doc/README.md](doc/README.md).
 2. **`/feature-spec <NNN>`** → gated BA/SA spec at `doc/features/{NNN}-{slug}/spec.md`.

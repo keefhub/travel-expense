@@ -99,3 +99,20 @@ skipped for a feature — it does not decide gate count.
 Every gate prompt carries a baseline contract: the exact `git diff` under review, the known-dirty
 paths above by name, and the pipeline position — *the commit does not exist yet; `PROGRESS.md` and
 `log.txt` are written after the gate passes, so their absence is never a gap.*
+
+## Model tiers
+
+`/sdd`'s implementer subagents — Step 2, and the Step 4 fix-and-re-review subagent — run on
+**Haiku** (`model: "haiku"` on the `Agent` call). This is the loop's highest-volume subagent (one
+dispatch per task, often two on a fix cycle), so it's where a cheaper model buys the most.
+
+Both review gates (Step 3 of `/sdd`) and every `writing-plans` review pass (A.5, B, C) run on the
+**default/inherited model** — no `model` override on those `Agent` calls. This is deliberate: the
+gates exist to catch what the implementer got wrong, so they must never be weaker than the
+implementer they're checking. Never lower a gate's model to match the implementer's.
+
+Because the implementer is a smaller model, plans written here carry more of the burden than usual
+— see `writing-plans` § "Calibrating contracts for a smaller implementer". A plan ambiguous enough
+that a strong model would resolve it correctly by inference is a plan defect in this repo, not an
+implementer error — the gates will keep catching it, but every caught defect is a wasted
+implement→fail→review→fix cycle that a tighter plan would have avoided.
