@@ -26,6 +26,11 @@ if (trip === undefined || trip === null) return null;   // undefined = not yet r
 `localStorage`. Do **not** replace this with `useEffect` + `setState` — it trips
 `react-hooks/set-state-in-effect`.
 
+**Exception (017, in progress):** `/join/[token]` does **not** use this gating pattern at all — a
+friend joining someone else's shared trip may have no local solo trip on this device, so redirecting
+on a missing `getTrip()` would lock them out of the one route that doesn't require one. It reads no
+trip-gate store and never redirects; do not copy the pattern above into it.
+
 Rules:
 
 - A route task mounts an existing component and gates it. It does not contain business logic — that
