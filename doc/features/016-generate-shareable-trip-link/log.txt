@@ -1,0 +1,473 @@
+=====================================================================
+Task 1: [Data] — lib/storage.ts gains sharedTripLink persistence
+Completed: 2026-09-16
+Commit: 87d2a89
+
+Summary:
+  Added SharedTripLink to lib/types.ts and a fifth STORAGE_KEYS entry plus
+  getSharedTripLink/saveSharedTripLink/clearSharedTripLink to lib/storage.ts,
+  following the existing safe-get/safe-set pattern exactly. resetAppData()
+  now also clears the pointer.
+
+Key Decisions:
+  - clearSharedTripLink duplicates resetAppData's inline isStorageAvailable
+    + try/catch shape rather than factoring a shared safeRemoveItem helper,
+    per the plan's explicit instruction to mirror resetAppData's shape; there
+    was no pre-existing removal helper to reuse anyway.
+  - sharedTripLink is removed first in resetAppData's sequence, grouped with
+    the other auxiliary collections ahead of expenses/categories/exchangeRates,
+    preserving the existing trip-removed-last recoverability rationale.
+
+Deviations:
+  None.
+
+Files Changed:
+  - lib/types.ts (modified)
+  - lib/storage.ts (modified)
+  - REFERENCE.md (modified — §6 storage API + §4 file tree, module-boundary change)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 2: [Config] — Prisma + Neon dependencies, schema, client generation, migration
+Completed: 2026-09-16
+Commit: ce362e2
+
+Summary:
+  Installed pinned Prisma/Neon/dotenv dependencies, authored prisma/schema.prisma
+  (Trip model) and prisma.config.ts, and applied the initial migration against
+  the user-supplied Neon database.
+
+Key Decisions:
+  - Discovered mid-execution that Prisma 7.10.0 removed datasource.url support
+    from schema.prisma entirely (a genuine breaking change from training data,
+    confirmed by a real P1012 failure and by reading the installed
+    @prisma/config type definitions). Moved the connection string into a new
+    prisma.config.ts, loaded via an explicit dotenv call against .env.local
+    (Prisma 7's config system does not auto-load any env file itself).
+  - Pinned all five new/changed packages to exact versions (--save-exact)
+    rather than ranges, since prisma's npm "latest" dist-tag currently points
+    at an 8.0.0-rc release candidate while @prisma/client/@prisma/adapter-neon
+    resolve "latest" to the stable 7.10.0 — an unpinned install would have
+    silently mixed an 8.x CLI with 7.x client packages.
+  - dotenv was declared as an explicit devDependency even though it was already
+    present transitively (via prisma) — makes an implicit dependency explicit
+    rather than adding new capability to the tree.
+  - Confirmed via node_modules/@prisma/adapter-neon's own type declarations that
+    PrismaNeon's constructor takes a neon.PoolConfig object directly, not a
+    pre-built Pool instance — corrected Task 3's contract in the plan before
+    dispatching it.
+
+Deviations:
+  - Plan originally specified schema.prisma with `url = env("DATABASE_URL")`
+    inside the datasource block, and no prisma.config.ts at all — both were
+    wrong for Prisma 7.10.0 and were corrected in plan.md before this task's
+    (second) implementation attempt. See the "Amended 2026-09-16" notes on
+    Task 2 and Task 3 in plan.md for the full reasoning.
+  - Gate A (spec) initially FAILed on one real gap: the repo's blanket .env*
+    .gitignore pattern also matched the new .env.local.example, silently
+    preventing it from ever being committed. Fixed with a one-line
+    `!.env.local.example` negation; Gate A re-run and passed.
+
+Files Changed:
+  - package.json, package-lock.json (modified — 5 pinned deps added)
+  - prisma/schema.prisma (created)
+  - prisma.config.ts (created)
+  - .env.local.example (created)
+  - .gitignore (modified — negation for .env.local.example)
+  - prisma/migrations/20260916041447_init_trip/migration.sql (created)
+  - prisma/migrations/migration_lock.toml (created)
+  - REFERENCE.md (modified — §2 Stack, §4 file layout)
+
+Verification:
+  npx prisma generate               exit 0, "Generated Prisma Client"
+  npx prisma migrate dev --name init_trip   exit 0, migration applied against the real Neon DB
+  npx tsc --noEmit                  exit 0, no output
+  npm run lint                      exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 2 — attempt 1 failed on the .gitignore gap, fixed and re-reviewed)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 3: [Data] — lib/db.ts Prisma client singleton
+Completed: 2026-09-16
+Commit: f330198
+
+Summary:
+  Added lib/db.ts: constructs PrismaNeon directly from a connection-string
+  config object, passes it as { adapter } to PrismaClient, caches the
+  instance on globalThis.__prismaClient outside production.
+
+Key Decisions:
+  - Dropped the plan's eslint-disable-next-line no-var comment — this repo's
+    ESLint config doesn't flag var inside an ambient declare global block, so
+    the comment triggered an "unused directive" warning instead of preventing
+    one. Confirmed via a real npm run lint run.
+  - Confirmed (by reading node_modules/@prisma/adapter-neon/dist/index.js)
+    that PrismaNeon's constructor only stores config — the actual neon.Pool
+    is created lazily inside connect(), called by Prisma only on first query
+    — so construction genuinely cannot throw at import time even with
+    DATABASE_URL unset, satisfying the task's constraint.
+
+Deviations:
+  - See Key Decisions re: the eslint-disable comment.
+
+Files Changed:
+  - lib/db.ts (created)
+  - REFERENCE.md (modified — §4 file layout)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 4: [Route] — POST /api/trips creates the server-side trip snapshot
+Completed: 2026-09-16
+Commit: 260e731
+
+Summary:
+  Added the app's first Route Handler, app/api/trips/route.ts: validates the
+  trip snapshot, generates shareToken/creatorToken, creates the Trip row, and
+  returns 201/400/500 as specified.
+
+Key Decisions:
+  - A quality-gate pass (attempt 1) found four real defects the initial
+    implementation missed: malformed-but-string dates and out-of-type budget
+    values slipped past validation and caused misleading 500s instead of
+    400s; a malformed JSON body was conflated with genuine server errors;
+    the catch block logged nothing. All four were fixed in one pass (attempt
+    2) and both gates re-run and passed, since the fix touched logic the
+    spec gate had already reviewed.
+  - Judged that a JSON parse failure responding 400 (rather than the plan's
+    literal "any thrown error ... responds 500" wording) is a legitimate
+    refinement, not a spec violation — that literal sentence predates the
+    fix commissioned to address exactly this conflation, and TS-016-03's
+    actual intent is about validating client input, not about pinning a
+    specific status code to a parse failure.
+
+Deviations:
+  - Contract extended beyond the plan's literal validation rules (typeof
+    checks only) to also reject unparseable date strings and wrong-typed
+    budget values, and to separate JSON-parse failures from server errors —
+    see Key Decisions. REFERENCE.md's route description was updated in the
+    same pass to stay accurate after the fix.
+
+Files Changed:
+  - app/api/trips/route.ts (created)
+  - REFERENCE.md (modified — §4 file layout, twice: once for the initial
+    description, once to correct it after the quality-gate fix)
+
+Verification:
+  npm run build      exit 0, route table includes /api/trips
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 2 — attempt 1 passed but the paired quality gate failed, requiring a joint re-review since the fix touched already-reviewed logic)
+Review Gate — Quality: PASS (attempt 2 — attempt 1 failed on 4 findings, all fixed)
+=====================================================================
+=====================================================================
+Task 5: [Route] — POST /api/trips/[id]/regenerate rotates the share token
+Completed: 2026-09-16
+Commit: 889f129
+
+Summary:
+  Added the app's first dynamic Route Handler segment. Awaits the
+  Promise-based params for id, authenticates via x-creator-token header,
+  rotates shareToken on success.
+
+Key Decisions:
+  - 404 (trip not found) is checked before 403 (unauthorized), letting an
+    unauthenticated caller distinguish "no such trip" from "wrong token."
+    Reviewed and accepted as spec-compliant: trip id is not treated as a
+    secret anywhere in this feature (shareToken and creatorToken are the
+    actual capabilities), and the source spec's own contrarian review
+    already rejected requiring a specific 403/404 distinction as meaningful
+    scope.
+  - No body-parsing try/catch split (unlike the sibling POST /api/trips
+    route) since this endpoint takes no request body at all — the single
+    try/catch is sufficient since auth failures are explicit early returns,
+    not thrown errors.
+
+Deviations:
+  None — implemented exactly to the plan's contract on the first attempt.
+
+Files Changed:
+  - app/api/trips/[id]/regenerate/route.ts (created)
+  - REFERENCE.md (modified — §4 file layout)
+
+Verification:
+  npm run build      exit 0, route table includes /api/trips/[id]/regenerate
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 6: [Route] — DELETE /api/trips/[id] tears down a trip's server row
+Completed: 2026-09-17
+Commit: 9626ae4
+
+Summary:
+  Added the creator-authenticated DELETE route, mirroring the regenerate
+  route's auth pattern (x-creator-token, 404, 403), then deletes the row and
+  responds 200 { ok: true }.
+
+Key Decisions:
+  - Confirmed the "second DELETE 404s" claim is a structural guarantee, not
+    a timing accident: each request independently re-runs findUnique and
+    gates on its result, so a sequential second call always sees the row
+    gone and 404s before delete is attempted again. A true concurrent race
+    (both requests' findUnique succeeding before either delete runs) instead
+    falls into the catch-all 500 (Prisma P2025) — accepted as an out-of-scope
+    gap given this feature's single-device concurrency model, same as the
+    sibling regenerate route's equivalent race.
+
+Deviations:
+  None — implemented exactly to the plan's contract on the first attempt.
+  (Session note: this task's review gates were interrupted mid-run by a
+  provider-side weekly rate limit; state was preserved untouched and the
+  same two gates were re-dispatched successfully once the limit cleared —
+  not a plan or implementation deviation.)
+
+Files Changed:
+  - app/api/trips/[id]/route.ts (created)
+  - REFERENCE.md (modified — §4 file layout)
+
+Verification:
+  npm run build      exit 0, route table includes /api/trips/[id]
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 7: [Domain] — lib/sharedTrip.ts client wrapper
+Completed: 2026-09-17
+Commit: 1808c36
+
+Summary:
+  Added the client-side wrapper around the three trip-link API endpoints:
+  buildShareUrl (pure), generateShareLink, regenerateShareLink,
+  deleteSharedTrip.
+
+Key Decisions:
+  - A quality-gate pass (attempt 1) found generateShareLink/regenerateShareLink
+    discarded saveSharedTripLink's SaveResult and unconditionally reported
+    success, even when the local write failed — which could permanently
+    orphan a server-created trip (no locally-stored creatorToken left to
+    regenerate/delete it) or leave localStorage silently out of sync with a
+    rotated token. Fixed (attempt 2) by checking the SaveResult and
+    propagating { ok: false, error } on write failure, mirroring lib/trip.ts's
+    existing saveTrip-checking pattern. Both gates re-run and passed since
+    the fix touched already-reviewed success-path logic.
+  - deleteSharedTrip deliberately never rejects and never calls
+    clearSharedTripLink itself — cleanup of the local pointer after a
+    server-side delete is the caller's responsibility (Task 8), keeping this
+    function a pure "best-effort network call" primitive.
+
+Deviations:
+  None beyond the SaveResult fix described above.
+
+Files Changed:
+  - lib/sharedTrip.ts (created)
+  - REFERENCE.md (modified — §4 file layout)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 2 — attempt 1 passed but the paired quality gate failed, requiring a joint re-review since the fix touched already-reviewed logic)
+Review Gate — Quality: PASS (attempt 2 — attempt 1 failed on the discarded-SaveResult finding, fixed)
+=====================================================================
+=====================================================================
+Task 8: [Domain] — submitNewTrip tears down the outgoing trip's link
+Completed: 2026-09-17
+Commit: f06ad50
+
+Summary:
+  Widened submitNewTrip's deps with getSharedTripLink/clearSharedTripLink/
+  deleteSharedTrip; teardown fires right after validation passes and before
+  the outgoing trip's expenses/rates are cleared, tying invalidation to the
+  trip actually being replaced. Wired the new deps through
+  app/trip/new/page.tsx's existing call site.
+
+Key Decisions:
+  - Followed the plan's own red-green methodology: widening the deps type
+    alone (Step 1) produced a real TS2345 at app/trip/new/page.tsx's
+    now-incomplete call site (Step 2), confirmed before implementing the
+    body (Step 3).
+  - deleteSharedTrip is fired with `void` (never awaited) — it never
+    rejects, so submitNewTrip stays fully synchronous; the new trip is
+    built and saved regardless of the server delete's outcome.
+  - A quality-gate note flagged that clearSharedTripLink's SaveResult is
+    discarded (unlike saveExpenses/saveExchangeRates just below it, which
+    do check and propagate failures). Left as-is deliberately: the whole
+    teardown step is documented as best-effort ("regardless of whether the
+    network call succeeded" per spec TS-016-10), and surfacing a
+    storage-error here would contradict that — new trip creation must not
+    be blocked by a shared-trip teardown side effect. Reviewer explicitly
+    flagged this as non-blocking, author's judgment.
+
+Deviations:
+  None.
+
+Files Changed:
+  - lib/trip.ts (modified)
+  - app/trip/new/page.tsx (modified)
+  - REFERENCE.md (modified — submitNewTrip and trip/new route descriptions)
+
+Verification:
+  npx tsc --noEmit (red step)   exit 2, TS2345 on app/trip/new/page.tsx as expected
+  npx tsc --noEmit (green step) exit 0, no output
+  npm run lint                  exit 0, no output beyond npm's banner
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1, one non-blocking note)
+=====================================================================
+=====================================================================
+Task 9: [UI] — components/ShareTripLink.tsx
+Completed: 2026-09-17
+Commit: cf15766
+
+Summary:
+  Added the invite/generate/regenerate/copy UI, mirroring
+  ExchangeRateForm.tsx's conventions. A useRef in-flight guard makes a
+  double-tap on either button produce only one request.
+
+Key Decisions:
+  - This task's [UI] tag with no lib/ change gets ONE combined gate per
+    .claude/repo-profile.md § Gate risk tiers, not two — corrected the
+    process here after giving every prior task two gates by default.
+  - The combined gate flagged handleCopy's missing try/catch as a real
+    defensive-coverage gap (an unhandled clipboard-access rejection would
+    leave the user with no feedback, inconsistent with every other async
+    action in the component). Fixed directly (small, mechanical, matches
+    the established pattern) and the gate was re-run to confirm.
+  - The two `link as SharedTripLink` type assertions in handleRegenerate/
+    handleCopy were reviewed and accepted as a common, safe React pattern:
+    those handlers are only ever wired to buttons rendered in the
+    link-exists branch, so the assertion is guaranteed true at the moment
+    either fires, even though TypeScript can't see across the early return
+    to prove it without restructuring into a child component — not worth
+    that indirection for two one-line handlers.
+
+Deviations:
+  - See Key Decisions re: handleCopy's try/catch, added beyond the plan's
+    literal contract (which only specified Copy's success path).
+
+Files Changed:
+  - components/ShareTripLink.tsx (created)
+  - REFERENCE.md (modified — §4 file layout)
+
+Verification:
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Combined: PASS (attempt 2 — attempt 1 passed overall but flagged the handleCopy gap, fixed and re-confirmed)
+=====================================================================
+=====================================================================
+Task 10: [Route] — mount ShareTripLink on the Settings page
+Completed: 2026-09-17
+Commit: c6cc6d2
+
+Summary:
+  Mounted ShareTripLink on /settings, immediately after ExchangeRateForm
+  and before the export/reset sections.
+
+Key Decisions:
+  None beyond following the plan's exact mount-order contract.
+
+Deviations:
+  None — implemented exactly to the plan's contract on the first attempt.
+
+Files Changed:
+  - app/settings/page.tsx (modified)
+  - REFERENCE.md (modified — settings route and ShareTripLink entries)
+
+Verification:
+  npm run build      exit 0, route table unchanged in shape (/settings still present)
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 11: [Behavioral] — Playwright coverage for the full feature
+Completed: 2026-09-17
+Commit: 849e78e
+
+Summary:
+  Added e2e/016-generate-shareable-trip-link.spec.ts covering all 11 scenarios
+  from spec.md §4 against a real Neon database (this stack has no mock/test-
+  double layer). Ran the suite, found and fixed one real flake, then re-ran
+  clean before committing.
+
+Key Decisions:
+  - E2E-016-04 renamed to "the previous link's token is genuinely replaced
+    after regeneration": creatorToken never rotates by design (only
+    shareToken does), so literally replaying the old creatorToken against
+    regenerate can never fail even against a broken implementation — that
+    would be a false-positive test. The honest, achievable check is the
+    user-observable proxy: the old shareToken string is genuinely gone from
+    what the UI shows, confirmed alongside a direct API check that
+    creatorToken still authorizes a further call.
+  - Scenarios exercising regenerate/teardown create a real Trip row via a
+    direct API call first (createRealTripLink), then seed its real
+    id/tokens into localStorage — a seeded-but-fake link would 404 the
+    moment a test regenerates or edits it, since those routes look the row
+    up for real.
+  - role="alert"/role="status" assertions are scoped to ShareTripLink's own
+    container (via the "Invite friends" heading's parent) to avoid
+    colliding with Next.js's route announcer and the Settings page's other
+    status regions (ExchangeRateForm, export/reset messages).
+  - The "editing trip details" and "starting a new trip" scenarios navigate
+    back to Settings via an in-app Link click, not page.goto — a full
+    navigation re-fires page.addInitScript and would re-seed the original,
+    pre-change localStorage values right back in, masking the very
+    regression each test exists to catch.
+  - The double-click scenario dispatches two raw MouseEvent click events via
+    element.evaluate rather than two Playwright .click() calls: .click()
+    waits for the element to be "enabled," but the component disables the
+    button synchronously on the first click (before any await), so a second
+    .click() would deadlock waiting for a state that never recurs before
+    the button unmounts on success.
+
+Deviations:
+  - First run: "generates a link the first time you invite friends" failed
+    — expect(paragraph).toBeVisible() timed out at the default 5s. This is
+    the one scenario that creates a brand-new Neon row through the UI
+    without a prior warm connection (every other scenario's
+    createRealTripLink already has one by the time it runs), and a cold
+    serverless connect exceeded 5s. Fixed by waiting for the real
+    POST /api/trips response explicitly via page.waitForResponse, matching
+    the pattern the regenerate scenario already used — not a code defect in
+    components/ShareTripLink.tsx or lib/sharedTrip.ts, confirmed by reading
+    both before making the change.
+
+Files Changed:
+  - e2e/016-generate-shareable-trip-link.spec.ts (created)
+
+Verification:
+  npx playwright test e2e/016-generate-shareable-trip-link.spec.ts   exit 0, 11 passed
+  npx tsc --noEmit   exit 0, no output
+  npm run lint       exit 0, no output beyond npm's banner
+  npm run build      exit 0, route table unchanged
+
+Review Gate: skipped — user explicitly directed completing and pushing this
+final task directly rather than through /sdd's independent-review gates,
+after three prior sessions had already raced and self-resolved a collision
+on this same task (see CLAUDE.md's now-added "do not chain features
+automatically" rule, commit 83a6351). All of this repo's own mechanical
+checks (tsc, lint, the full Playwright suite, build) ran and passed before
+commit; no gate subagent reviewed the diff independently.
+=====================================================================
