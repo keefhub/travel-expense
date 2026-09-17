@@ -1,4 +1,4 @@
-import type { Trip, Category, Expense, ExchangeRate, SharedTripLink } from "@/lib/types";
+import type { Trip, Category, Expense, ExchangeRate, SharedTripLink, JoinedTrip } from "@/lib/types";
 
 export const STORAGE_KEYS = {
   trip: "travel-expense:trip",
@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   categories: "travel-expense:categories",
   exchangeRates: "travel-expense:exchange-rates",
   sharedTripLink: "travel-expense:shared-trip-link",
+  joinedTrips: "travel-expense:joined-trips",
 } as const;
 
 export type SaveResult = { ok: true } | { ok: false; error: string };
@@ -95,6 +96,14 @@ export function clearSharedTripLink(): SaveResult {
   }
 }
 
+export function getJoinedTrips(): JoinedTrip[] {
+  return safeGetItem<JoinedTrip[]>(STORAGE_KEYS.joinedTrips, []);
+}
+
+export function saveJoinedTrips(trips: JoinedTrip[]): SaveResult {
+  return safeSetItem(STORAGE_KEYS.joinedTrips, trips);
+}
+
 export function resetAppData(): SaveResult {
   if (!isStorageAvailable()) return { ok: false, error: SAVE_ERROR_MESSAGE };
   try {
@@ -105,6 +114,7 @@ export function resetAppData(): SaveResult {
     // most-authoritative piece of data still intact rather than already
     // gone.
     window.localStorage.removeItem(STORAGE_KEYS.sharedTripLink);
+    window.localStorage.removeItem(STORAGE_KEYS.joinedTrips);
     window.localStorage.removeItem(STORAGE_KEYS.expenses);
     window.localStorage.removeItem(STORAGE_KEYS.categories);
     window.localStorage.removeItem(STORAGE_KEYS.exchangeRates);

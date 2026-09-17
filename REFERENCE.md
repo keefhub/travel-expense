@@ -96,7 +96,7 @@ doc/              # agent-generated decision trail: doc/features/<NNN>-<slug>/{s
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored
 lib/
   types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate, SharedTripLink (016), SharedTripSummary, JoinedTrip (017, in progress)
-  storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors; resetAppData() (013) clears all five keys; sharedTripLink accessors (016, in progress) — the creator device's pointer to its trip's server-side row
+  storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors; resetAppData() (013) clears all six keys; sharedTripLink accessors (016) — the creator device's pointer to its trip's server-side row; joinedTrips accessors (017, in progress) — every shared trip this device has joined, and as which participant
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries/getSupportedCurrencies (005 — deduplicated, sorted list of currencies across SUPPORTED_COUNTRIES, for the expense-form currency dropdown)
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
   trip.ts         # trip setup domain logic (001, complete) — calculateTripDurationDays, validateTripForm, submitTripSetup (TripFormValues/TripValidationResult/SubmitTripResult), getTripFormValues (002, complete — converts a stored Trip back into TripFormValues for pre-filling the edit form); submitNewTrip (003 — validates, then (016, in progress) if the outgoing trip had a generated share link, best-effort deletes it server-side via the injected deleteSharedTrip and clears the local pointer via clearSharedTripLink, before clearing saved expenses and exchange rates and building/saving a new trip via the same buildAndSaveTrip internals as submitTripSetup — the server delete is fired without awaiting it, since deleteSharedTrip never rejects and submitNewTrip stays fully synchronous); pure, dependency-injected, wired up by components/TripSetupForm.tsx and app/page.tsx
@@ -216,7 +216,7 @@ Pulled from the specs so you do not have to open every file. The cited feature f
 
 `lib/storage.ts` public API (feature 012, complete):
 
-- `STORAGE_KEYS` — `{ trip: "travel-expense:trip", expenses: "travel-expense:expenses", categories: "travel-expense:categories", exchangeRates: "travel-expense:exchange-rates", sharedTripLink: "travel-expense:shared-trip-link" }`
+- `STORAGE_KEYS` — `{ trip: "travel-expense:trip", expenses: "travel-expense:expenses", categories: "travel-expense:categories", exchangeRates: "travel-expense:exchange-rates", sharedTripLink: "travel-expense:shared-trip-link", joinedTrips: "travel-expense:joined-trips" }`
 - `SaveResult` — `{ ok: true } | { ok: false; error: string }`
 - `isStorageAvailable(): boolean` — probes `localStorage`; `false` during SSR or when storage is
   unavailable/full.
@@ -225,10 +225,16 @@ Pulled from the specs so you do not have to open every file. The cited feature f
 - `getExpenses(): Expense[]` / `saveExpenses(expenses: Expense[]): SaveResult`
 - `getExchangeRates(): ExchangeRate[]` / `saveExchangeRates(rates: ExchangeRate[]): SaveResult`
 - `getSharedTripLink(): SharedTripLink | null` / `saveSharedTripLink(link: SharedTripLink): SaveResult`
-  (016, in progress) — the creator device's pointer to its trip's server-side row once a link has
+  (016) — the creator device's pointer to its trip's server-side row once a link has
   been generated: `{ tripId, shareToken, creatorToken }`. `null` until a link exists for the active
   trip. `clearSharedTripLink(): SaveResult` removes it (mirrors `resetAppData`'s try/catch shape).
-- `resetAppData(): SaveResult` — removes all five `STORAGE_KEYS` entries; after a successful call
+- `getJoinedTrips(): JoinedTrip[]` / `saveJoinedTrips(trips: JoinedTrip[]): SaveResult` (017, in
+  progress) — the joining device's record of every shared trip it has joined and as which
+  participant: `{ tripId, shareToken, participantId, participantToken, participantName, trip:
+  SharedTripSummary }[]`. Array fallback (`[]`), not `null` — a device can join any number of shared
+  trips, distinct from `sharedTripLink`'s single-pointer shape (016 is the creator's own trip; this
+  is every trip a device joined as someone else's guest).
+- `resetAppData(): SaveResult` — removes all six `STORAGE_KEYS` entries; after a successful call
   every getter returns its empty fallback (`null`/`[]`) exactly as it does for a never-populated key.
 
 All getters return a safe fallback (`null` or `[]`) on SSR, a missing key, or corrupt/unparseable
