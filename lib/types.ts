@@ -32,3 +32,20 @@ export interface SharedTripLink {
   shareToken: string;
   creatorToken: string;
 }
+
+export interface SharedTripSummary {
+  id: string;
+  destinationCountry: string;
+  currency: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface JoinedTrip {
+  tripId: string;
+  shareToken: string;
+  participantId: string;
+  participantToken: string;
+  participantName: string;
+  trip: SharedTripSummary;
+}

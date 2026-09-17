@@ -95,7 +95,7 @@ doc/              # agent-generated decision trail: doc/features/<NNN>-<slug>/{s
                   #   log.txt, and doc/workflow/ for pipeline work. See doc/README.md
 output/ .spec-review/   # agent scratch dirs; output/ is gitignored
 lib/
-  types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate, SharedTripLink (016, in progress)
+  types.ts        # shared domain interfaces: Trip, Category, Expense, ExchangeRate, SharedTripLink (016), SharedTripSummary, JoinedTrip (017, in progress)
   storage.ts      # localStorage persistence layer (012) — trip/category/expense/exchangeRate accessors; resetAppData() (013) clears all five keys; sharedTripLink accessors (016, in progress) — the creator device's pointer to its trip's server-side row
   countries.ts    # fixed country→currency mapping (004) — SUPPORTED_COUNTRIES + getCurrencyForCountry/isSupportedCountry/searchSupportedCountries/getSupportedCurrencies (005 — deduplicated, sorted list of currencies across SUPPORTED_COUNTRIES, for the expense-form currency dropdown)
   categories.ts   # expense categories (010, complete) — DEFAULT_CATEGORIES (frozen), getAllCategories/isDefaultCategoryName, addCategory/renameCategory/deleteCategory (CategoryMutationResult)
