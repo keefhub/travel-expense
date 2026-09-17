@@ -7,6 +7,7 @@ import { getTrip, getExpenses, resetAppData } from "@/lib/storage";
 import { formatExpensesAsCsv } from "@/lib/export";
 import ExchangeRateForm from "@/components/ExchangeRateForm";
 import ResetAppDataConfirm from "@/components/ResetAppDataConfirm";
+import ShareTripLink from "@/components/ShareTripLink";
 import ThemeToggle from "@/components/ThemeToggle";
 
 type TripSnapshot = Trip | null | undefined;
@@ -91,6 +92,7 @@ export default function SettingsPage() {
       <ThemeToggle />
       <p className="font-mono text-sm text-(--muted)">Trip currency: {trip.currency}</p>
       <ExchangeRateForm trip={trip} />
+      <ShareTripLink trip={trip} />
       <div className="flex flex-col gap-2">
         <button
           type="button"

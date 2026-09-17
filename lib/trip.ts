@@ -1,4 +1,4 @@
-import type { Trip, Expense, ExchangeRate } from "@/lib/types";
+import type { Trip, Expense, ExchangeRate, SharedTripLink } from "@/lib/types";
 import type { SaveResult } from "@/lib/storage";
 import { isSupportedCountry } from "@/lib/countries";
 
@@ -109,11 +109,20 @@ export function submitNewTrip(
     saveTrip: (trip: Trip) => SaveResult;
     saveExpenses: (expenses: Expense[]) => SaveResult;
     saveExchangeRates: (rates: ExchangeRate[]) => SaveResult;
+    getSharedTripLink: () => SharedTripLink | null;
+    clearSharedTripLink: () => SaveResult;
+    deleteSharedTrip: (link: SharedTripLink) => Promise<void>;
   }
 ): SubmitTripResult {
   const { errors } = validateTripForm(values);
   if (Object.keys(errors).length > 0) {
     return { status: "invalid", errors };
+  }
+
+  const link = deps.getSharedTripLink();
+  if (link) {
+    void deps.deleteSharedTrip(link);
+    deps.clearSharedTripLink();
   }
 
   const clearedExpenses = deps.saveExpenses([]);

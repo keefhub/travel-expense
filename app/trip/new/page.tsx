@@ -3,8 +3,15 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { Trip } from "@/lib/types";
-import { getTrip, saveExpenses, saveExchangeRates } from "@/lib/storage";
+import {
+  getTrip,
+  saveExpenses,
+  saveExchangeRates,
+  getSharedTripLink,
+  clearSharedTripLink,
+} from "@/lib/storage";
 import { submitNewTrip } from "@/lib/trip";
+import { deleteSharedTrip } from "@/lib/sharedTrip";
 import TripSetupForm from "@/components/TripSetupForm";
 import NewTripConfirm from "@/components/NewTripConfirm";
 
@@ -60,7 +67,14 @@ export default function NewTripPage() {
     <TripSetupForm
       onSaved={() => router.push("/")}
       submit={(values, deps) =>
-        submitNewTrip(values, { ...deps, saveExpenses, saveExchangeRates })
+        submitNewTrip(values, {
+          ...deps,
+          saveExpenses,
+          saveExchangeRates,
+          getSharedTripLink,
+          clearSharedTripLink,
+          deleteSharedTrip,
+        })
       }
     />
   );

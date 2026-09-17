@@ -1,10 +1,11 @@
-import type { Trip, Category, Expense, ExchangeRate } from "@/lib/types";
+import type { Trip, Category, Expense, ExchangeRate, SharedTripLink } from "@/lib/types";
 
 export const STORAGE_KEYS = {
   trip: "travel-expense:trip",
   expenses: "travel-expense:expenses",
   categories: "travel-expense:categories",
   exchangeRates: "travel-expense:exchange-rates",
+  sharedTripLink: "travel-expense:shared-trip-link",
 } as const;
 
 export type SaveResult = { ok: true } | { ok: false; error: string };
@@ -76,6 +77,24 @@ export function saveExchangeRates(rates: ExchangeRate[]): SaveResult {
   return safeSetItem(STORAGE_KEYS.exchangeRates, rates);
 }
 
+export function getSharedTripLink(): SharedTripLink | null {
+  return safeGetItem<SharedTripLink | null>(STORAGE_KEYS.sharedTripLink, null);
+}
+
+export function saveSharedTripLink(link: SharedTripLink): SaveResult {
+  return safeSetItem(STORAGE_KEYS.sharedTripLink, link);
+}
+
+export function clearSharedTripLink(): SaveResult {
+  if (!isStorageAvailable()) return { ok: false, error: SAVE_ERROR_MESSAGE };
+  try {
+    window.localStorage.removeItem(STORAGE_KEYS.sharedTripLink);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: SAVE_ERROR_MESSAGE };
+  }
+}
+
 export function resetAppData(): SaveResult {
   if (!isStorageAvailable()) return { ok: false, error: SAVE_ERROR_MESSAGE };
   try {
@@ -85,6 +104,7 @@ export function resetAppData(): SaveResult {
     // itself is the last thing removed, so a reported failure leaves the
     // most-authoritative piece of data still intact rather than already
     // gone.
+    window.localStorage.removeItem(STORAGE_KEYS.sharedTripLink);
     window.localStorage.removeItem(STORAGE_KEYS.expenses);
     window.localStorage.removeItem(STORAGE_KEYS.categories);
     window.localStorage.removeItem(STORAGE_KEYS.exchangeRates);

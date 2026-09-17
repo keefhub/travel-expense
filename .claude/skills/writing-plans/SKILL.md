@@ -40,10 +40,15 @@ Facts a plan written here must respect:
 | Backend            | None. Data lives in browser local storage; there is no API layer, server, or database.                                                                                                                                                                                                   |
 
 > **Where repo facts live:** `.claude/repo-profile.md` is the source for verification commands and
-> when each applies, the behavioral gate, layer slices, known-dirty paths, and gate risk tiers —
-> read it rather than trusting a copy. Orientation for subagents is the core packet at
+> when each applies, the behavioral gate, layer slices, known-dirty paths, gate risk tiers, and
+> model tiers — read it rather than trusting a copy. Orientation for subagents is the core packet at
 > `memories/repo/travel-expense-context.md` plus one slice from `memories/repo/slices/`; re-read the
 > raw `REFERENCE.md`/`OVERVIEW.md`/`design.md` only when a task modifies them.
+>
+> **`/sdd`'s implementer runs on a cheaper model here** (`.claude/repo-profile.md` § Model tiers) —
+> plans written by this skill are that implementer's *entire* brief, with no conversation history to
+> fall back on. See § "Calibrating contracts for a smaller implementer" below; it governs how
+> literal Step 2/3 need to be, not just a style preference.
 
 ### Layers (task boundaries)
 
@@ -126,7 +131,10 @@ e.g. `Task 3: [Domain] — validateExpense rejects a non-positive amount`. Titli
 
 Rules:
 
-- **One task = one engineer, one session, 3–8 steps.** More than 8 steps means it is two tasks.
+- **One task = one engineer, one session, 3–8 steps — bias toward 3–5.** More than 8 steps means it
+  is two tasks. The implementer is a smaller model (see § "Calibrating contracts for a smaller
+  implementer"), so a narrower scope per dispatch matters more here than the 8-step ceiling alone
+  suggests.
 - **Data, backend, and UI changes are always separate tasks.** In this repo that reads: `lib/storage/**`, `lib/<domain>/**`, and `components/` + `app/` never share a task.
 - **A step containing "and also", or a second verb, gets split.** "Add the field and wire it to storage" is two steps.
 - Every task opens with a **Files** manifest before its first step:
@@ -175,6 +183,35 @@ Verify: npx tsc --noEmit && npm run lint   -> exit 0, no output
 
 Give literal code only where exactness is the point and prose would be ambiguous — a regex, a
 formula, a specific Next.js API call with a known gotcha.
+
+### Calibrating contracts for a smaller implementer
+
+`/sdd`'s implementer subagent runs on Haiku, not the model drafting this plan (`.claude/repo-profile.md`
+§ Model tiers). It sees nothing but the task's own section — no conversation history, no chance to
+ask a clarifying question. "Contracts, not function bodies" still holds — do not paste finished
+source, that's what makes the review gates independent — but the bar for what counts as an
+acceptable contract is stricter than it would be for a stronger implementer:
+
+- **Enumerate every branch, don't summarize them.** Not "handle invalid input" — list each invalid
+  case and its exact outcome: `amount <= 0 -> reason: "invalid-amount"`, `date outside trip range ->
+  reason: "date-out-of-range"`. If Step 1 would have written "handles edge cases" as a step, that
+  same vagueness inside a Behavior line is still banned.
+- **Name every literal the implementer would otherwise have to invent**: exact prop names, exact
+  error/`reason` strings, exact CSS classes tied to a design-system token, exact storage keys. A
+  detail two competent engineers could reasonably implement two different ways is a detail this plan
+  must pin down, not leave to judgment.
+- **One behavior per Behavior line.** Where the reference shape in `PLAN-TEMPLATES.md` shows a
+  single `Behavior:` line covering several cases with `;` separators, prefer one line per case once
+  there are more than two — a wall of semicolons is exactly the kind of prose-ambiguity this
+  calibration exists to remove.
+- **Widen, don't narrow, when literal code is worth it.** The "regex, formula, known-gotcha API call"
+  list above is a floor here, not the ceiling — also give literal code for anything with more than
+  one plausible correct shape (a `reduce` with a non-obvious accumulator, a conditional a reviewer
+  could reasonably read two ways).
+- Pass C (below) already checks a plan "as someone who will build from it alone, with no access to
+  the conversation that produced it" — when reconciling its findings, resolve any ambiguity it
+  flags by tightening the contract per the rules above, not by trusting the implementer to infer the
+  intended reading correctly.
 
 **Keep the red→green loop.** This repo has no unit-test runner, so the compiler is the red signal,
 and it is a real one — `TS2305` asserts that *a named export with a declared shape* is missing, not
@@ -307,7 +344,10 @@ Dispatch a **general-purpose subagent** with the draft plan and a one-sentence s
 
 Dispatch a **general-purpose subagent** with this exact prompt:
 
-> Review this implementation plan as someone who will have to build from it, alone, with no access to the conversation that produced it.
+> Review this implementation plan as a competent engineer who will have to build from it alone, with
+> no access to the conversation that produced it, and who will resolve any ambiguity by guessing
+> rather than asking — treat every point where two reasonable guesses diverge as a defect, not a
+> detail the implementer can be trusted to infer correctly.
 >
 > PLAN:
 > <paste the full plan>

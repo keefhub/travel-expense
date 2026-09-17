@@ -66,6 +66,35 @@ For each feature file, in the order above, drive it through the pipeline defined
 `/writing-plans` → `/sdd`. This section only adds the per-feature status check and what to do
 on failure; it does not repeat the pipeline mechanics documented there.
 
+**One feature per session.** A session implements exactly one feature file and then ends. Never
+chain a second feature file into the same conversation, even if the user's original ask was
+"implement the next feature" repeated or "continue implementation" and there is context budget
+left. This applies regardless of context state — do not treat compaction, a long remaining
+context window, or an idle loop as license to keep going. Reasons: it keeps each feature's spec,
+plan, gate history, and commit trail free of drift or bleed-through from the previous feature's
+reasoning, and it keeps `/sdd`'s resumable state (`PROGRESS.md`, `log.txt`) scoped to one plan per
+session. Concretely:
+
+- On starting a session for this workflow, step 1 below must be the first thing done in that
+  session — do not resume mid-loop from memory of a prior session's feature. Git state (the
+  `git log --grep` check, `doc/features/`, `output/error/`) is the only thing that may carry
+  across sessions; conversation memory may not.
+- When a feature's loop ends (success or the 3-attempt escalation stop below), the session ends
+  too — do not begin step 1 for the next feature file in this same conversation, even if asked to
+  keep going. State the outcome and tell the user to start a new session for the next feature.
+- This is a hard stop, not a suggestion the user can wave off mid-session — if a completed session
+  is asked to "just do the next one too," decline and restate that the next feature needs a new
+  session.
+- **Do not chain features automatically with `/loop`, `CronCreate`, or any other recurring or
+  scheduled trigger.** This was tried and removed after it caused a real incident: a recurring
+  "continue implementation" job fires a cold session that re-derives "what's next" purely from
+  git state, but `PROGRESS.md`/`log.txt` — the only signal that a feature is already mid-flight —
+  are gitignored, per-checkout run state, invisible to git log. Overlapping firings (or a leftover
+  job plus a manually-started session) landed multiple independent sessions on the same plan at
+  once, each running its own `/sdd`, overwriting each other's edits to the same files and racing
+  on commits. Start each feature's session explicitly, one at a time, and confirm no other session
+  is already active on this repo before starting one.
+
 1. **Check status and the tree.** Run `git log --oneline --grep="^feat(<NNN>)"` to confirm the feature hasn't already been committed. Also confirm the working tree is clean, or that any dirty tracked paths are declared — `/sdd` now refuses to start otherwise, because every reviewer sees the same `git status` and undeclared changes produce wrong-baseline gate findings. If [output/error/](output/error/) has a file for this feature from a prior failed attempt, read it first — it likely explains why the last attempt didn't land. Each feature's `spec.md`, `plan.md`, and `log.txt` live together in [doc/features/](doc/features/)`<NNN>-<slug>/` — see [doc/README.md](doc/README.md).
 2. **`/feature-spec <NNN>`** → gated BA/SA spec at `doc/features/{NNN}-{slug}/spec.md`.
    _(Thin-feature shortcut: if the feature file has ≤2 Gherkin scenarios and introduces no new
@@ -73,8 +102,8 @@ on failure; it does not repeat the pipeline mechanics documented there.
    `/writing-plans` — see Cost optimization below.)_
 3. **`/writing-plans`** against that spec → `doc/features/{NNN}-{slug}/plan.md`.
 4. **`/sdd <path-to-plan.md>`** to execute it. `/sdd` owns implementation (via fresh subagents per task), the review gates — two for tasks touching types, data, domain, `lib/` or a module boundary; one combined gate for pure UI and route wiring — and every commit — this loop just reacts to its outcome:
-   - **Plan reaches `**Status:** Complete`** → proceed to the next feature.
-   - **`/sdd` escalates** (a task fails its two allowed attempts in a row) — it has already stopped and reported what was tried and what the review gates found. Read that report and attempt a genuine root-cause fix — not `@ts-ignore`, not `eslint-disable`, not deleting the failing code, not `--no-verify`. Resume `/sdd` on the same plan. Allow up to 3 total attempts (1 initial + 2 fix attempts) per feature. If still failing after 3 attempts, **stop the loop** and report to the user — do not proceed to the next feature.
+   - **Plan reaches `**Status:** Complete`** → this feature is done; end the session per "One feature per session" above instead of continuing to the next feature file.
+   - **`/sdd` escalates** (a task fails its two allowed attempts in a row) — it has already stopped and reported what was tried and what the review gates found. Read that report and attempt a genuine root-cause fix — not `@ts-ignore`, not `eslint-disable`, not deleting the failing code, not `--no-verify`. Resume `/sdd` on the same plan. Allow up to 3 total attempts (1 initial + 2 fix attempts) per feature, all within this same session since they're the same feature. If still failing after 3 attempts, **stop the loop**, report to the user, and end the session — do not proceed to the next feature, in this session or a new one, until the user has addressed the failure.
 
 Never let a failing build reach git history. Later features are built on top of earlier ones; a broken build compounds instead of staying isolated.
 

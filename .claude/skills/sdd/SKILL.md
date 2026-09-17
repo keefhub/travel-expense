@@ -112,7 +112,7 @@ If any of these is false, **stop and tell the user** what's inconsistent — do 
 
 ### Step 2 — Implement (fresh subagent)
 
-Dispatch one `Agent` call, `subagent_type: general-purpose`, run in the foreground (`run_in_background: false` — the next step depends on its result). Build the prompt from this template, with everything in `{{...}}` pasted in literally:
+Dispatch one `Agent` call, `subagent_type: general-purpose`, `model: "haiku"`, run in the foreground (`run_in_background: false` — the next step depends on its result). The implementer runs on the cheaper model deliberately — see [`.claude/repo-profile.md`](../../repo-profile.md) § Model tiers; the review gates in Step 3 stay on the default model precisely so they can catch what it gets wrong. Build the prompt from this template, with everything in `{{...}}` pasted in literally:
 
 ```
 You are implementing exactly one task from an implementation plan. Work
@@ -197,7 +197,7 @@ If your reading of the repo disagrees with the diff above, re-read against `git 
 before reporting — the working tree may contain changes that are not this task's.
 ```
 
-Dispatch **both** of the following in the **same message** (two `Agent` tool calls, `subagent_type: general-purpose`, `run_in_background: false`) so they run in parallel and you block on both before deciding.
+Dispatch **both** of the following in the **same message** (two `Agent` tool calls, `subagent_type: general-purpose`, `run_in_background: false`) so they run in parallel and you block on both before deciding. **Do not pass a `model` override on either** — they run on the controller's default model, not the implementer's, so they are never weaker than the code they're checking (see `.claude/repo-profile.md` § Model tiers).
 
 **Gate A — Spec/requirements reviewer:**
 
@@ -281,7 +281,7 @@ covers that. Do not edit any files.
 ### Step 4 — Gate decision
 
 - **Both PASS** (or the single combined gate PASSes, for a one-gate task) → go to Step 5 (commit).
-- **One or both FAIL** (or the combined gate FAILs) → dispatch a fresh fix subagent (`general-purpose`, foreground) scoped to only the failing findings:
+- **One or both FAIL** (or the combined gate FAILs) → dispatch a fresh fix subagent (`general-purpose`, `model: "haiku"` — same tier as the implementer it's fixing, per § Model tiers, foreground) scoped to only the failing findings:
 
 ```
 A reviewer found the following issues in a task you're about to fix. Fix
