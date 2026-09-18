@@ -14,12 +14,15 @@ browser `localStorage`, exactly as v1 (features 001–015). Starting with featur
 creator generates a shareable link becomes **server-backed**: a `Trip` row in Neon Postgres
 (Prisma), reachable via Route Handlers under `app/api/`. Solo (unshared) trips never touch the
 server. One local solo trip at a time; a device can additionally belong to any number of shared
-trips. Mobile bottom nav (Home, Add Expense, Categories, Settings) is the app shell every page
-renders inside — it is solo-trip-scoped only; shared-trip routes (`/join/[token]`, from 017) render
-outside it and do not gate on a local trip existing.
+trips. Mobile bottom nav (Home, Add Expense, Categories, Settings) is the app shell — `app/layout.tsx`
+renders `BottomNav` on **every** route, the shared-trip ones (`/join/[token]`, `/trips/[token]`)
+included; it is the *trip gating*, not the nav, that shared-trip routes opt out of, so they do not
+gate on a local trip existing.
 
-**Features 001–016 are implemented and committed.** Feature 017 (join a shared trip via link) is
-in progress. Progress lives in `git log` (`feat(NNN)` prefixes), not a status file.
+**Features 001–017 are implemented and committed.** Feature 018 (switch between multiple trips) is
+in progress: the switcher, `/trips/[token]`, the joined-trip redirect, and `lib/tripSwitcher.ts` are
+in; its Playwright spec is the last piece. Progress lives in `git log` (`feat(NNN)` prefixes), not a
+status file.
 
 ## Stack
 
