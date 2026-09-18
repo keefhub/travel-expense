@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import type { Trip } from "@/lib/types";
-import { getTrip } from "@/lib/storage";
+import { getTrip, getJoinedTrips } from "@/lib/storage";
 import { EXPENSE_SAVED_FLAG_KEY } from "@/lib/expenses";
 import TripSetupForm from "@/components/TripSetupForm";
 import Dashboard, { DashboardSkeleton } from "@/components/Dashboard";
@@ -66,6 +67,7 @@ function createSavedMessageStore() {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [store] = useState(createTripStore);
   const trip = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
   const [savedMessageStore] = useState(createSavedMessageStore);
@@ -75,11 +77,20 @@ export default function Home() {
     savedMessageStore.getServerSnapshot,
   );
 
+  useEffect(() => {
+    if (trip === null && getJoinedTrips().length > 0) {
+      router.replace(`/trips/${getJoinedTrips()[0].shareToken}`);
+    }
+  }, [trip, router]);
+
   if (trip === undefined) {
     return <DashboardSkeleton />;
   }
 
   if (trip === null) {
+    if (getJoinedTrips().length > 0) {
+      return null;
+    }
     return <TripSetupForm onSaved={store.setSnapshot} />;
   }
 
