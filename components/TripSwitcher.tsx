@@ -6,48 +6,8 @@ import { usePathname } from "next/navigation";
 // React 19's types no longer declare a global JSX namespace, so the return type
 // below is imported from "react" rather than referenced bare.
 import type { JSX } from "react";
-import type { Trip, SharedTripLink, JoinedTrip } from "@/lib/types";
 import { getTrip, getSharedTripLink, getJoinedTrips } from "@/lib/storage";
-
-// Local to this task on purpose: a later task extracts this into lib/ once the
-// component that consumes it exists.
-type TripRole = "own" | "created" | "joined";
-
-interface SwitcherEntry {
-  role: TripRole;
-  label: string;
-  href: string;
-  shareToken?: string;
-}
-
-// The device's own trip first (unshared or created), then joined trips in the
-// order storage holds them. Never sorted.
-function computeEntries(
-  trip: Trip | null,
-  sharedLink: SharedTripLink | null,
-  joined: JoinedTrip[],
-): SwitcherEntry[] {
-  const entries: SwitcherEntry[] = [];
-
-  if (trip !== null) {
-    entries.push({
-      role: sharedLink !== null ? "created" : "own",
-      label: trip.destinationCountry,
-      href: "/",
-    });
-  }
-
-  for (const jt of joined) {
-    entries.push({
-      role: "joined",
-      label: jt.trip.destinationCountry,
-      href: `/trips/${jt.shareToken}`,
-      shareToken: jt.shareToken,
-    });
-  }
-
-  return entries;
-}
+import { getSwitcherEntries, type TripRole } from "@/lib/tripSwitcher";
 
 const ROLE_LABEL: Record<TripRole, string> = {
   own: "Own trip",
@@ -83,7 +43,7 @@ export default function TripSwitcher(): JSX.Element | null {
   // (for example a joined trip pruned from storage). Recomputing on every
   // render is fresh enough because usePathname() re-renders this component on
   // every navigation, and isOpen toggles it on every open and close.
-  const entries = computeEntries(getTrip(), getSharedTripLink(), getJoinedTrips());
+  const entries = getSwitcherEntries(getTrip(), getSharedTripLink(), getJoinedTrips());
 
   if (entries.length < 2) return null;
 
