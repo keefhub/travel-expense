@@ -13,8 +13,14 @@ function serialize(expense: {
   location: string;
   description: string | null;
   payerParticipantId: string | null;
+  payerParticipantIdSnapshot: string | null;
   payerName: string;
-  shares: { participantId: string | null; name: string; amount: number }[];
+  shares: {
+    participantId: string | null;
+    participantIdSnapshot: string | null;
+    name: string;
+    amount: number;
+  }[];
 }) {
   return {
     id: expense.id,
@@ -26,10 +32,10 @@ function serialize(expense: {
     paymentMethod: expense.paymentMethod,
     location: expense.location,
     ...(expense.description !== null ? { description: expense.description } : {}),
-    payerParticipantId: expense.payerParticipantId,
+    payerParticipantId: expense.payerParticipantIdSnapshot,
     payerName: expense.payerName,
     shares: expense.shares.map((s) => ({
-      participantId: s.participantId,
+      participantId: s.participantIdSnapshot,
       name: s.name,
       amount: s.amount,
     })),
@@ -222,6 +228,7 @@ export async function PATCH(
 
     const shareRows = shares.map((s) => ({
       participantId: s.participantId,
+      participantIdSnapshot: s.participantId,
       name:
         s.participantId === null ? "Trip creator" : nameById.get(s.participantId)!,
       amount: s.amount,
@@ -233,6 +240,7 @@ export async function PATCH(
         where: { id: expenseId },
         data: {
           payerParticipantId,
+          payerParticipantIdSnapshot: payerParticipantId,
           payerName,
           shares: { create: shareRows },
         },

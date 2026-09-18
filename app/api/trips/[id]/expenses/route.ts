@@ -168,6 +168,7 @@ export async function POST(
 
     const shareRows = shares.map((s) => ({
       participantId: s.participantId,
+      participantIdSnapshot: s.participantId,
       name:
         s.participantId === null ? "Trip creator" : nameById.get(s.participantId)!,
       amount: s.amount,
@@ -187,6 +188,7 @@ export async function POST(
         location: (body.location as string).trim(),
         ...(trimmedDescription !== "" ? { description: trimmedDescription } : {}),
         payerParticipantId,
+        payerParticipantIdSnapshot: payerParticipantId,
         payerName,
         shares: { create: shareRows },
       },
@@ -207,10 +209,10 @@ export async function POST(
           ...(expense.description !== null
             ? { description: expense.description }
             : {}),
-          payerParticipantId: expense.payerParticipantId,
+          payerParticipantId: expense.payerParticipantIdSnapshot,
           payerName: expense.payerName,
           shares: expense.shares.map((s) => ({
-            participantId: s.participantId,
+            participantId: s.participantIdSnapshot,
             name: s.name,
             amount: s.amount,
           })),
