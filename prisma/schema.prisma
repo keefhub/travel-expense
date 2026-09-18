@@ -44,6 +44,7 @@ model Expense {
   location           String
   description        String?
   payerParticipantId String?
+  payerParticipantIdSnapshot String?
   payer              Participant?   @relation("ExpensePayer", fields: [payerParticipantId], references: [id], onDelete: SetNull)
   payerName          String
   shares             ExpenseShare[]
@@ -56,6 +57,7 @@ model ExpenseShare {
   expenseId     String
   expense       Expense      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   participantId String?
+  participantIdSnapshot String?
   participant   Participant? @relation("ExpenseShareParticipant", fields: [participantId], references: [id], onDelete: SetNull)
   name          String
   amount        Float
