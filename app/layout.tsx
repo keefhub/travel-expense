@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import TripSwitcher from "@/components/TripSwitcher";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 const geistSans = Geist({
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col">
+        <TripSwitcher />
         <main className="mx-auto w-full max-w-2xl flex-1 pb-20">
           {children}
         </main>

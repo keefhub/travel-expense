@@ -1,0 +1,284 @@
+=====================================================================
+Task 1: [UI] — Extract JoinedTripSummary from JoinTrip's joined-view branch
+Completed: 2026-09-18
+Commit: 321e216
+
+Summary:
+  JoinTrip.tsx's inline "joined" branch markup moved verbatim into a new
+  components/JoinedTripSummary.tsx, which takes { joinedTrip, storageWarning }.
+  JoinTrip.tsx now renders <JoinedTripSummary /> for that state; no other branch or
+  behavior in the file changed.
+
+Key Decisions:
+  - The non-null assertion (`joinedTrip!`) stayed at the JoinTrip.tsx call site rather
+    than moving into the new component, since the component's prop is typed as
+    non-nullable JoinedTrip — this was already what the plan specified.
+  - REFERENCE.md §4 was updated by the controller (new components/ line plus a reworded
+    JoinTrip.tsx row) so the layout doc matches the tree.
+  - Model tiers were remapped for this environment: the plan/skill call for a "haiku"
+    implementer, but only DeepSeek models are available here. The implementer ran on
+    DeepSeek V4 Flash (cheaper tier) and the review gate on DeepSeek V4 Pro (stronger),
+    preserving the skill's intent that gates are never weaker than the implementer.
+
+Deviations:
+  None from the plan's steps for this task. Environment-level deviation only: the
+  implementer model name (see Key Decisions).
+
+Files Changed:
+  - components/JoinedTripSummary.tsx (created)
+  - components/JoinTrip.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit                                              -> exit 0, no output
+  npm run lint                                                  -> exit 0, banner only
+  npm run build                                                 -> exit 0, "Compiled successfully",
+                                                                   route table unchanged (includes /join/[token])
+  npx playwright test e2e/017-join-a-shared-trip-via-link.spec.ts -> exit 0, 17 passed
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 2: [UI/Route] — SharedTripView and the /trips/[token] route
+Completed: 2026-09-18
+Commit: 9210fce
+
+Summary:
+  Added the /trips/[token] route and components/SharedTripView.tsx, the
+  connectivity-gated viewer the switcher navigates to. Every visit calls
+  lib/join.ts's resolveTripByToken — never a local cache shortcut — so it can
+  distinguish "offline" (message, no storage write) from "not-found" (prune the
+  stale joinedTrips entry, then "This trip is no longer available."); a successful
+  resolve refreshes the cached trip summary and renders JoinedTripSummary.
+
+Key Decisions:
+  - This task got TWO review gates rather than one, even though the plan tags it
+    [UI/Route]. It creates a new route surface plus a component whose four-branch
+    state machine performs storage writes, which the repo profile's "defines a
+    module boundary" row covers; the cost asymmetry favours the extra gate.
+  - REFERENCE.md was updated by the controller in §4 (new route line, new
+    components/ line) and §5 (the new-route typecheck gotcha below), so the
+    doc change sits inside the reviewed diff.
+  - Gate B raised two non-blocking observations rather than a FAIL: the two
+    saveJoinedTrips(...) results are discarded (so a failed prune leaves the stale
+    entry for the next visit, and no storageWarning is surfaced the way
+    JoinTrip.tsx's joined branch does), and the in-flight resolve has no
+    cancellation, matching JoinTrip.tsx's identical exposure. Both were accepted
+    as-is: the spec's §2.6 explicitly declares a failed prune an acceptable
+    eventual-consistency gap requiring no new handling, and the second is a
+    pre-existing repo pattern. Neither was fixed, so no fix-and-re-review cycle
+    ran.
+
+Deviations:
+  - The plan's Step 2/Step 4 `Expected:` lines were incomplete for a brand-new
+    route: `npx tsc --noEmit` also reports TS2344 on `PageProps<"/trips/[token]">`
+    ("does not satisfy the constraint 'AppRoutes'") plus a cascading TS2339,
+    because `.next/types/routes.d.ts` is a stale build artifact that only a build
+    regenerates. The implementer ran the plan's own Step 5 build, after which tsc
+    exits 0 as Step 4 expects. Annotated in plan.md (Step 2) and documented in
+    REFERENCE.md §5 so later plans expect it.
+
+Files Changed:
+  - app/trips/[token]/page.tsx (created)
+  - components/SharedTripView.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit  -> exit 0 (after the build regenerated .next/types/routes.d.ts;
+                       before it, exit 2 with TS2307 + TS2344 + TS2339 as above)
+  npm run lint      -> exit 0, banner only
+  npm run build     -> exit 0, "Compiled successfully", route table now includes /trips/[token]
+  npx tsc --noEmit  -> re-run after the build: exit 0, no output
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 3: [Route] — app/page.tsx redirects to a joined trip when no local trip exists
+Completed: 2026-09-18
+Commit: 462e577
+
+Summary:
+  app/page.tsx's Home component now redirects to the device's first joined trip
+  instead of rendering TripSetupForm when the trip store resolves to null while
+  getJoinedTrips() is non-empty, so a device that has only ever joined shared trips
+  can still reach one.
+
+Key Decisions:
+  - One combined gate (the [Route] tier): the task adds a branch to an already-
+    typechecking route file and touches no lib/ code.
+  - REFERENCE.md §4's page.tsx row was updated by the controller because its old
+    text ("components/TripSetupForm.tsx when no trip is saved") stopped matching
+    the code, putting the doc change inside the reviewed diff.
+  - Gate raised two non-blocking observations, both explicitly mandated by the
+    plan's contract and therefore not implemented as deviations from it: the
+    effect calls getJoinedTrips() twice (once for .length, once for [0].shareToken),
+    which could throw in a pathological same-tick mutation; and the render-time
+    getJoinedTrips() read sits outside a store. The second is provably safe because
+    getServerSnapshot() returns undefined, so the `trip === undefined` branch
+    short-circuits before that read during SSR and hydration. Neither was fixed, so
+    no fix-and-re-review cycle ran.
+
+Deviations:
+  None. Every step's Expected: line matched on the first run (tsc exit 0; lint
+  exit 0, banner only; build exit 0 with an unchanged route table).
+
+Files Changed:
+  - app/page.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint     -> exit 0, banner only
+  npm run build    -> exit 0, "Compiled successfully", route table unchanged
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 4: [UI/Route] — TripSwitcher, mounted globally
+Completed: 2026-09-18
+Commit: a97abe0
+
+Summary:
+  Added components/TripSwitcher.tsx and mounted it as app/layout.tsx's first body
+  child. It collects the device's trips (one local entry, role "own" or "created";
+  then one entry per joined trip), renders nothing below two entries, and otherwise
+  shows a header trigger plus a z-50 modal listing every trip as a plain next/link
+  labelled "Own trip" / "Created" / "Joined".
+
+Key Decisions:
+  - One combined gate (the [UI/Route] tier): no lib/ change and no new route — the
+    component plus a one-line layout mount.
+  - THE PLAN WAS WRONG HERE, and was corrected in place. Its Step 3 prescribed the
+    mount flag `const [mounted, setMounted] = useState(false); useEffect(() =>
+    setMounted(true), [])`, which cannot ship: react-hooks/set-state-in-effect is an
+    error-level rule in this repo, so lint exited 1. The plan also forbade
+    useSyncExternalStore outright, while spec TS-018-02 asked for it — the two
+    contradicted each other. The controller authorized the narrow fix: keep the
+    plan's design intent (computeEntries still called UNCACHED in the render body,
+    no hasRead cache, no "storage" event listener) and replace only the mount flag
+    with a module-scope useSyncExternalStore hydration guard (constant true/false
+    snapshots, not a data store). plan.md's Step 3 now strikes the old idiom and
+    narrows the ban to "not as a data store", both pointing here.
+  - REFERENCE.md §4 gained a components/TripSwitcher.tsx row and a reworded
+    app/layout.tsx row, by the controller, inside the reviewed diff.
+  - The trigger and each entry use the literal `${label} — ${roleLabel}` em-dash
+    format the plan mandates for Task 6's selectors. That conflicts with design.md's
+    "no em dash in UI copy" rule; the plan's explicit instruction governs, since
+    design.md never overrides a spec's functional scenarios.
+  - Extra beyond the contract: `import type { JSX } from "react";`, because React
+    19's types no longer declare a global JSX namespace and the contract's bare
+    `JSX.Element` return type does not compile without it.
+
+Deviations:
+  - Attempt 1 failed at Step 5 (lint exit 1 on the plan's own idiom, reason above) —
+    the implementer stopped and reported rather than improvising, which is the
+    correct behaviour. Attempt 2 applied the controller's authorized fix and passed
+    tsc, lint, and build on the first try.
+  - No other deviation; Steps 2, 4, and 5's Expected lines otherwise matched.
+
+Files Changed:
+  - components/TripSwitcher.tsx (created)
+  - app/layout.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint     -> exit 0, banner only (exit 1 before the fix: react-hooks/set-state-in-effect)
+  npm run build    -> exit 0, "Compiled successfully", route table unchanged
+
+Review Gate — Combined: PASS (attempt 2)
+=====================================================================
+=====================================================================
+Task 5: [Domain] — Extract getSwitcherEntries into lib/tripSwitcher.ts
+Completed: 2026-09-18
+Commit: d692c88
+
+Summary:
+  Moved TripSwitcher.tsx's inline computeEntries, TripRole, and SwitcherEntry into
+  a new pure lib/tripSwitcher.ts, renamed to getSwitcherEntries, leaving the
+  component as thin wiring over it. The function body is byte-for-byte the inline
+  original; the call site is still uncached in the render body.
+
+Key Decisions:
+  - Two gates, per the [Domain] / new-lib-module tier.
+  - REFERENCE.md was updated by the controller in §4 (the new module and its
+    exported surface) and §6 (the multi-trip membership fact this feature
+    introduces: union of local + joined trips, own/created/joined roles, the
+    >1-trip switcher threshold, /trips always-revalidates vs /join skips the
+    network, per-tab switching).
+  - Authorized trim: the plan's prescribed import included `type SwitcherEntry`,
+    which the component no longer references (its `entries` value is inferred), so
+    it produced a @typescript-eslint/no-unused-vars warning. The controller cut it
+    from the import; lib/tripSwitcher.ts still exports it as part of the module's
+    public surface. The component's now-orphaned lib/types import was removed for
+    the same reason.
+  - The extracted function keeps the inline original's leading "never sorted"
+    comment and trailing comma, where the plan's snippet omitted both — kept for
+    verbatim fidelity. Spec TS-018-01 names the third parameter `joinedTrips`; the
+    implementation uses the plan's `joined`. Positional calls make this cosmetic.
+
+Deviations:
+  - The unused-import trim above. It surfaced as a lint warning with exit 0 rather
+    than a failure, so the implementer flagged it for a decision instead of guessing;
+    a bounded fix dispatch applied the controller's call and re-ran all three
+    commands.
+  - No other deviation.
+
+Files Changed:
+  - lib/tripSwitcher.ts (created)
+  - components/TripSwitcher.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint     -> exit 0, banner only (one unused-import warning before the trim)
+  npm run build    -> exit 0, "Compiled successfully", route table unchanged
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 6: [UI/Route] — Playwright coverage for switching between multiple trips
+Completed: 2026-09-18
+Commit: 8f8bcb7
+
+Summary:
+  Added e2e/018-switch-between-multiple-trips.spec.ts, 14 tests covering
+  AC-018-01..14, reusing feature 017's seedStorage / createRealTripLink /
+  joinViaApi helpers and adding buildJoinedTrip. All 14 passed on the first run;
+  no product code needed changing.
+
+Key Decisions:
+  - One combined gate (no lib/ change; the deliverable is a spec file). Note the
+    [UI]/[Route] slices do not describe e2e/ conventions, so the dispatch carried
+    the core packet, the [Route] slice for its Playwright/localStorage-seeding
+    rules, and an explicit pointer to e2e/017's spec as the format template.
+  - The context packet memories/repo/travel-expense-context.md was refreshed in
+    this same commit, because this task's own execution disproved two of its
+    claims: that the bottom nav is "solo-trip-scoped only" and that /join/[token]
+    "renders outside it" (app/layout.tsx renders BottomNav on every route — it is
+    the trip gating, not the nav, that shared-trip routes opt out of), and the
+    stale "001-016 committed, 017 in progress" status line.
+  - REFERENCE.md needed no change: its §4 lists e2e/ as a single line rather than
+    an enumerated file list, and every product file this feature added was already
+    recorded by Tasks 1-5.
+
+Deviations:
+  None. Every test name, seed, step, and assertion is as written; the implementer
+  did not weaken, skip, merge, or add any test, and reported no product-code
+  problem.
+
+Files Changed:
+  - e2e/018-switch-between-multiple-trips.spec.ts (created)
+  - memories/repo/travel-expense-context.md (modified)
+
+Verification:
+  npx playwright test e2e/018-switch-between-multiple-trips.spec.ts -> exit 0, 14 passed
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint     -> exit 0, banner only
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+
+
