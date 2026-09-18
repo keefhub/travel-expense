@@ -4,10 +4,11 @@
 
 ```ts
 STORAGE_KEYS = {
-  trip:          "travel-expense:trip",
-  expenses:      "travel-expense:expenses",
-  categories:    "travel-expense:categories",
-  exchangeRates: "travel-expense:exchange-rates",
+  trip:           "travel-expense:trip",
+  expenses:       "travel-expense:expenses",
+  categories:     "travel-expense:categories",
+  exchangeRates:  "travel-expense:exchange-rates",
+  sharedTripLink: "travel-expense:shared-trip-link",   // added 016
 }
 
 type SaveResult = { ok: true } | { ok: false; error: string }
@@ -17,7 +18,9 @@ getTrip(): Trip | null          / saveTrip(trip): SaveResult
 getCategories(): Category[]     / saveCategories(categories): SaveResult
 getExpenses(): Expense[]        / saveExpenses(expenses): SaveResult
 getExchangeRates(): ExchangeRate[] / saveExchangeRates(rates): SaveResult
-resetAppData(): SaveResult      // removes all four keys
+getSharedTripLink(): SharedTripLink | null / saveSharedTripLink(link): SaveResult   // added 016
+clearSharedTripLink(): SaveResult                                                   // added 016
+resetAppData(): SaveResult      // removes all five keys
 ```
 
 Contract every function here honors:
@@ -28,6 +31,9 @@ Contract every function here honors:
 - **Setters never throw.** Catch write failures (quota, private mode) and return
   `{ ok: false, error }` with a friendly, user-showable message — never a raw exception.
 - After a successful `resetAppData()`, every getter returns its empty fallback.
+- An **array-valued** key (`expenses`, `categories`, and any future one) falls back to `[]`, never
+  `null` — `getExpenses`/`getCategories` are the pattern to copy for a new array-shaped key, not
+  `getTrip`'s `null` fallback.
 
 Rules:
 

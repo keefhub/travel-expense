@@ -17,7 +17,12 @@ affordances.
 - **Forms** — label above input, helper text present even when empty, error below the field, `gap-2`
   per block. `globals.css` already gives fields their surface/border treatment and focus ring.
 - **Roles** — `role="alert"` for blocking errors (auto-colored `--danger`); `role="status"` for
-  non-blocking warnings/confirmations, which need an explicit `text-(--warning)` / `text-(--success)`.
+  non-blocking warnings/confirmations. A confirmation (e.g. "Link copied.", "Exchange rate saved.")
+  is `className="text-sm text-(--success-text)"`; a non-blocking warning (e.g. Dashboard's missing-
+  exchange-rate note) is `className="text-sm text-(--warning-text)"` — note the real token names are
+  `--success-text`/`--warning-text`, not bare `--success`/`--warning`. A purely informational
+  `role="status"` note with no error/caution connotation (e.g. `ExpenseForm.tsx`'s
+  out-of-trip-range date note) may skip the color class entirely.
 - **Typography** — Geist sans + Geist Mono; numbers (currency, dates, counts) use `font-mono`.
   Headings `text-xl`/`text-2xl font-semibold`; body `text-sm`/`text-base`; helper `text-xs
   text-(--muted)`.

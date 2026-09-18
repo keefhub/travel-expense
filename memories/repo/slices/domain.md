@@ -5,7 +5,30 @@ Date()` for "today"** unless the value is passed in. Domain modules call `lib/st
 persistence; they never reach past it.
 
 Existing modules: `countries.ts`, `categories.ts`, `trip.ts`, `expenses.ts`, `currency.ts`,
-`export.ts`, `theme.ts`.
+`export.ts`, `theme.ts`, `sharedTrip.ts` (016 — see below).
+
+## `lib/sharedTrip.ts` (016) — the pattern a new client-wrapper-around-a-server-route module copies
+
+The one existing domain module that is *not* fully pure (it calls `fetch` and `lib/storage.ts`, not
+just other pure functions) — this is the accepted shape for a module that wraps a server API for
+client use, not an exception to avoid:
+
+```ts
+export type ShareLinkResult = { ok: true; link: SharedTripLink } | { ok: false; error: string };
+
+buildShareUrl(shareToken: string): string          // pure: `${window.location.origin}/join/${shareToken}`
+generateShareLink(trip: Trip): Promise<ShareLinkResult>       // POST /api/trips
+regenerateShareLink(link: SharedTripLink): Promise<ShareLinkResult>  // POST /api/trips/[id]/regenerate
+deleteSharedTrip(link: SharedTripLink): Promise<void>         // DELETE /api/trips/[id], best-effort, never rejects
+```
+
+Pattern to copy for any sibling module: a thrown `fetch`/non-2xx response becomes a friendly-text
+`{ ok: false, error }` result, never a thrown exception out of the module; a successful mutating
+call writes through to `lib/storage.ts` itself (the module owns persisting its own result) rather
+than making the caller do it; the friendly error text
+`"Could not reach the server. Check your connection and try again."` is this repo's one standard
+network-failure message — reuse it verbatim in any new client wrapper rather than inventing a new
+string.
 
 ## Domain facts that cut across features
 

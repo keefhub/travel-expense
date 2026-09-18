@@ -16,4 +16,15 @@ model Trip {
   shareToken         String   @unique
   creatorToken       String   @unique
   createdAt          DateTime @default(now())
+  participants       Participant[]
+}
+
+model Participant {
+  id               String   @id @default(cuid())
+  tripId           String
+  trip             Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name             String
+  participantToken String   @unique
+  createdAt        DateTime @default(now())
+  @@index([tripId])
 }
