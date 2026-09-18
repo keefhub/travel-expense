@@ -30,17 +30,22 @@ export function validateJoinName(name: string): { error?: string } {
 export async function resolveTripByToken(
   token: string
 ): Promise<ResolveResult> {
+  let response: Response;
   try {
-    const response = await fetch(`/api/join/${token}`);
+    response = await fetch(`/api/join/${token}`);
+  } catch {
+    return { ok: false, reason: "offline" };
+  }
 
-    if (!response.ok) {
-      return { ok: false, reason: "not-found" };
-    }
+  if (!response.ok) {
+    return { ok: false, reason: "not-found" };
+  }
 
+  try {
     const trip = (await response.json()) as SharedTripSummary;
     return { ok: true, trip };
   } catch {
-    return { ok: false, reason: "offline" };
+    return { ok: false, reason: "not-found" };
   }
 }
 
