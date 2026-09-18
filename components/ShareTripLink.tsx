@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import type { SharedTripLink, Trip } from "@/lib/types";
 import { getSharedTripLink } from "@/lib/storage";
@@ -117,6 +118,10 @@ export default function ShareTripLink({ trip }: { trip: Trip }) {
           Generate new link
         </button>
       </div>
+
+      <Link href={`/trips/${link.shareToken}/participants`} className="link">
+        Manage participants
+      </Link>
     </div>
   );
 }
