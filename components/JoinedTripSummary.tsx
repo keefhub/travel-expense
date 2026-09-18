@@ -27,6 +27,12 @@ export default function JoinedTripSummary({
       <Link href="/" className="link self-start">
         Back to home
       </Link>
+      <Link
+        href={`/trips/${joinedTrip.shareToken}/participants`}
+        className="link self-start"
+      >
+        View participants
+      </Link>
     </div>
   );
 }

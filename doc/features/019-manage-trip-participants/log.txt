@@ -1,0 +1,432 @@
+=====================================================================
+Task 1: [Types] — `lib/types.ts` gains `ParticipantSummary`
+Completed: 2026-09-18
+Commit: 9152da6
+
+Summary:
+  Appended the ParticipantSummary interface ({ id, name }) to lib/types.ts after JoinedTrip, and
+  added it to REFERENCE.md §4's lib/types.ts enumeration.
+
+Key Decisions:
+  - REFERENCE.md §4 was updated in this same commit: its lib/types.ts line enumerates the file's
+    interfaces, so omitting ParticipantSummary would have left that doc fact stale. The controller
+    owned that edit, per /sdd.
+  - No Co-Authored-By trailer: the plan's own commit-format section specifies only a summary
+    bullet list plus a Spec: line.
+
+Deviations:
+  - Model tier: .claude/repo-profile.md § Model tiers specifies Haiku for implementer dispatches.
+    Haiku is not available in this environment (available: DeepSeek V4.1 Flash, DeepSeek V4 Flash,
+    DeepSeek V4 Pro, DeepSeek V4 Flash Vision Exp, Auto). Implementer dispatches therefore use
+    "DeepSeek V4 Flash (deepseek)" — the cheapest available model, preserving the rule's intent.
+    Review gates ran with no model override, per the tier rule.
+  - Otherwise none.
+
+Files Changed:
+  - lib/types.ts (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 2: [Route] — `GET /api/trips/[id]/participants` lists a trip's participants
+Completed: 2026-09-18
+Commit: 0fbabd9
+
+Summary:
+  Added app/api/trips/[id]/participants/route.ts: a creator-or-participant authorized list
+  endpoint returning the trip's Participant rows as { id, name }, and documented it in REFERENCE.md §4.
+
+Key Decisions:
+  - Gate tier: treated as a new module boundary (a new HTTP contract with its own auth semantics),
+    so it got two independent gates rather than the single combined gate the [Route] row allows for
+    pure wiring.
+  - `let authorized` rather than an early return on the creator check, so a caller presenting a
+    valid participant token alongside a stale creator token still authorizes — matches the
+    contract's "creator OR participant" wording.
+  - REFERENCE.md §4 gained a route line in the same commit, as the [Route] slice requires.
+
+Deviations:
+  - The [Route] slice (memories/repo/slices/route.md) documents only app/**/page.tsx page routes and
+    says nothing about app/api/**/route.ts handlers. Both the implementer and the quality gate had
+    to fall back on the three existing handlers as precedent. Slice needs expanding — 020–022 will
+    add more Route Handlers.
+  - Non-blocking, not actioned: the quality gate noted `orderBy: { createdAt: "asc" }` has no
+    tiebreaker, so two rows created in the same millisecond may order arbitrarily. The contract
+    specifies that exact orderBy, so it was left as written.
+  - Otherwise none.
+
+Files Changed:
+  - app/api/trips/[id]/participants/route.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build    -> exit 0, "Compiled successfully", route table includes /api/trips/[id]/participants
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 3: [Route] — `DELETE /api/trips/[id]/participants/[participantId]` removes a participant
+Completed: 2026-09-18
+Commit: 70aa45a
+
+Summary:
+  Added the nested DELETE Route Handler: one endpoint serving both "creator removes someone else"
+  and "a participant leaves", authorized by which header matches, deleting exactly one Participant
+  row. Documented in REFERENCE.md §4.
+
+Key Decisions:
+  - Gate tier: two gates, on the same module-boundary reasoning as Task 2 — this handler defines the
+    authorization contract the whole feature's remove/leave behaviour rests on.
+  - isSelf compares against target.participantToken (the row being deleted), never a lookup by the
+    caller's own token, so a valid token for a different participant cannot authorize a deletion.
+  - The 404-before-403 ordering is kept deliberately, matching the sibling GET and the 016 handlers.
+
+Deviations:
+  - None. Both gates passed on attempt 1.
+  - Non-blocking, not actioned (both flagged by the quality gate, both consistent with existing
+    precedent and with the mandated contract):
+      * read-then-delete is not atomic — a concurrent second delete surfaces as 500 rather than 404,
+        the same window app/api/trips/[id]/route.ts (016) already has.
+      * the participant 404 precedes the 403, so an authenticated-check failure performs two DB
+        round-trips before rejecting; ids are cuids, so this is not enumerable.
+
+Files Changed:
+  - app/api/trips/[id]/participants/[participantId]/route.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build    -> exit 0, "Compiled successfully", route table includes /api/trips/[id]/participants/[participantId]
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 4: [Domain] — `lib/participants.ts` client wrapper
+Completed: 2026-09-18
+Commit: 3f359f3
+
+Summary:
+  Added lib/participants.ts, the client wrapper the ManageParticipants component will call:
+  getParticipants (GET) and removeParticipant (DELETE), each selecting the creator or participant
+  token header from auth.role and collapsing every failure to the repo's standard friendly error.
+  Documented in REFERENCE.md §4.
+
+Key Decisions:
+  - FRIENDLY_ERROR is reused verbatim from lib/join.ts / lib/sharedTrip.ts rather than a new phrase,
+    and a thrown fetch and a non-2xx response collapse to the SAME result with no distinct "offline"
+    branch - the spec's Contrarian Review #1 deliberately merges BR-019-10 and BR-019-11 into one
+    message.
+  - No storage write-through, unlike lib/sharedTrip.ts's generateShareLink / lib/join.ts's joinTrip:
+    persisting a successful self-leave is ManageParticipants.tsx's job (Task 6), since only the
+    component knows whether the removed id was the viewer's own.
+  - JSON parsing sits inside the same try as the fetch, matching lib/sharedTrip.ts, so a malformed
+    2xx body degrades to the friendly error instead of rejecting.
+
+Deviations:
+  - None. The step's contract does not enumerate a JSON-parse failure; the implementer folded it into
+    the same collapsed-error branch, consistent with lib/sharedTrip.ts. The spec gate reviewed this
+    and found it within intent.
+  - Both gates passed on attempt 1.
+
+Files Changed:
+  - lib/participants.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 5: [UI] — `components/ConfirmParticipantAction.tsx`
+Completed: 2026-09-18
+Commit: fa4cc03
+
+Summary:
+  Added the shared remove/leave confirm modal: a prop-only, hookless panel rendering the
+  AddCategoryModal overlay convention with action-specific wording and a Cancel button that only
+  calls onCancel. Documented in REFERENCE.md §4.
+
+Key Decisions:
+  - One combined gate, per the [UI] tier in .claude/repo-profile.md: no lib/ change, pure
+    presentational component.
+  - No 'use client' directive, matching components/ResetAppDataConfirm.tsx and NewTripConfirm.tsx -
+    the component holds no state and imports nothing, so it stays a plain component.
+  - REFERENCE.md §4 gained a components/ line in the same commit, as the doc table requires.
+
+Deviations:
+  - Cosmetic only: the implementation destructures props in the signature instead of using
+    props.x throughout, and Prettier reflowed the Cancel button attributes across lines. Both match
+    the sibling components' style; rendered DOM, classes and copy are unchanged.
+  - Two non-blocking a11y notes from the gate, deliberately NOT actioned because the task pins the
+    markup verbatim and both existing overlays share the shape: the dialog has no accessible name,
+    and it has no autofocus or Escape-to-cancel. Belongs in a repo-wide pass over all three
+    overlays, not this task.
+  - Follow-up noted, not actioned: REFERENCE.md's sentence under the §4 tree claiming a short list
+    of components "are the only other implemented pieces so far" is already stale at HEAD. This
+    commit does not make it newly wrong, so it was left for a separate cleanup rather than folded
+    into a reviewed diff.
+
+Files Changed:
+  - components/ConfirmParticipantAction.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 6: [UI] — `components/ManageParticipants.tsx`
+Completed: 2026-09-18
+Commit: 487678c
+
+Summary:
+  Added the participants screen: it resolves the viewing device's role by comparing local storage
+  to the URL token, loads the list via lib/participants.ts, renders an action-less "Trip creator"
+  row plus one row per participant, gates Remove/Leave behind ConfirmParticipantAction, and on a
+  successful self-leave prunes the device's joined-trips entry and returns home.
+
+Key Decisions:
+  - Plan defect corrected (the plan's own text is now struck through with a pointer here): the
+    contract's export annotation "JSX.Element" is unsatisfiable against the contract's own two
+    `return null` paths. Landed as `JSX.Element | null` with `import type { JSX } from "react"` —
+    exactly what components/TripSwitcher.tsx already does, since React 19's types no longer declare
+    a global JSX namespace. The implementer proved the failure with the tsc error before widening.
+  - One combined gate, per the [UI] tier: no lib/ change.
+  - The gate's Issue 4 was actioned before commit — the REFERENCE.md line at first claimed the
+    component was "mounted at /trips/[token]/participants", which is Task 7's output and therefore
+    false at this commit. It now says "not yet mounted — app/trips/[token]/participants/page.tsx
+    (Task 7) is its entry point", and the combined gate was re-run over the corrected diff.
+
+Deviations:
+  - The REFERENCE.md §4 edit is not in the task's Files manifest; it is required by the docs table
+    and every prior 019 commit has done the same.
+  - Four gate findings deliberately NOT actioned, because each would expand a contract plan.md
+    pins literally. Recorded here as follow-ups:
+      (1) confirm can be double-tapped, firing two DELETEs; the second 404s into a spurious
+          friendly error. Needs a pending guard the contract does not specify.
+      (2) cancelling while a DELETE is in flight still filters the row / navigates home on resolve.
+      (3) the effect does not reset role/loadState/participants on a token change. Unreachable
+          today: nothing navigates participants-screen to participants-screen, and the switcher
+          links to "/" and "/trips/{shareToken}", which swap the page component and unmount this one.
+      (5) spec.md §2.2's table still says `.btn-danger` for the row buttons where this plan's
+          contract pins `btn-text danger` (the class CategoryManager.tsx already uses). Worth
+          reconciling next time spec.md is edited, and worth knowing before Task 10 writes
+          selectors: `btn-danger` matches the modal's confirm button, not a row.
+  - Deferred doc clauses to settle in Task 7's doc pass, when the route exists: REFERENCE.md's
+    `lib/participants.ts` entry still ends "not yet wired to any component", and
+    ConfirmParticipantAction.tsx still says "not yet mounted anywhere" — both are now consumed.
+
+Files Changed:
+  - components/ManageParticipants.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+
+Review Gate — Combined: PASS (attempt 1, then re-run PASS after the doc correction)
+=====================================================================
+
+=====================================================================
+Task 7: [Route] — `app/trips/[token]/participants/page.tsx`
+Completed: 2026-09-18
+Commit: 6e09265
+
+Summary:
+  Added the participants route: a client page that unwraps the Promise-based token via
+  use(props.params) and renders components/ManageParticipants.tsx, deliberately without the usual
+  getTrip() gate or redirect.
+
+Key Decisions:
+  - One combined gate, per the [Route] tier: this is pure wiring around an existing component, with
+    no lib/ change.
+  - Ran npm run build BEFORE the standalone npx tsc --noEmit, per the plan's Step 2 note, so the
+    regenerated .next/types/routes.d.ts pre-empted the expected TS2344 on
+    PageProps<"/trips/[token]/participants">. No wasted cycle.
+  - Third instance of the /join/[token] exception: no getTrip() read and no redirect, because a
+    device reaching this screen as a participant may have no local solo trip at all. The
+    belongs-to-neither-role case is handled by the component's own router.replace("/").
+  - This task's doc pass also settled the three deferred "not yet wired/mounted" clauses
+    (lib/participants.ts, ConfirmParticipantAction.tsx, ManageParticipants.tsx), which this route
+    finally makes true, plus the new app/ tree line. All four were checked by the gate against the
+    real code.
+
+Deviations:
+  - The task's `Exports:` line names a `JSX.Element` return type while the Step 1 Behavior block it
+    supplies carries no annotation, and both files it says to mirror carry none either. The
+    implementation follows the Behavior block verbatim, so the return type is inferred (equally
+    JSX.Element). Accepted by the gate as faithful.
+  - Not actioned, and out of this task's scope: REFERENCE.md's paragraph under the §4 tree still
+    claims a short list of components "are the only other implemented pieces so far", which has
+    been stale since well before this feature. Fixing it means re-deriving a statement spanning
+    every feature, so it belongs in its own cleanup, not in a wiring task's diff.
+
+Files Changed:
+  - app/trips/[token]/participants/page.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build    -> exit 0, "Compiled successfully", route table includes /trips/[token]/participants
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 8: [UI] — `components/ShareTripLink.tsx` gains a "Manage participants" link
+Completed: 2026-09-18
+Commit: 08bb4a7
+
+Summary:
+  Added one additive next/link to /trips/{shareToken}/participants beneath the Copy link /
+  Generate new link row in the branch that already has a share link, giving the creator a route
+  into the participants screen from Settings. Nothing else in the component changed.
+
+Key Decisions:
+  - One combined gate, per the [UI] tier: no lib/ change.
+  - The link is rendered only when link !== null, so its link.shareToken dereference can never
+    reach the link-less branch.
+  - The REFERENCE.md ShareTripLink.tsx entry was extended in the same commit, since the plain
+    file-tree line documents what the component renders and was now incomplete.
+
+Deviations:
+  - None from the plan. The regression check the plan predicted held: feature 016's spec still
+    reports 11 passed, so this additive change did not disturb its assertions.
+  - One cosmetic inconsistency flagged by the gate and deliberately NOT fixed, because plan.md
+    Step 2 and spec.md TS-019-08 both pin the class list verbatim as className="link": every other
+    .link in the repo that sits in a flex column adds self-start (Dashboard.tsx, JoinedTripSummary.tsx,
+    SharedTripView.tsx), so the new link stretches to the full container width and its focus
+    outline spans the row. Purely cosmetic - .link carries no background or padding. A plan/spec
+    amendment, not an implementer deviation.
+
+Files Changed:
+  - components/ShareTripLink.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+  npx playwright test e2e/016-generate-shareable-trip-link.spec.ts -> exit 0, "11 passed (14.1s)" (matches Expected)
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 9: [UI] — `components/JoinedTripSummary.tsx` gains a "View participants" link
+Completed: 2026-09-18
+Commit: 37db109
+
+Summary:
+  Added one additive next/link to /trips/{shareToken}/participants beneath "Back to home" in the
+  shared joined-trip summary, giving a participant a route into the participants screen from both
+  /join/[token] and /trips/[token]. Nothing else in the component changed.
+
+Key Decisions:
+  - One combined gate, per the [UI] tier: no lib/ change.
+  - Reused the component's existing next/link import and copied the sibling "Back to home" link's
+    exact className="link self-start", so the new link matches the component's own convention
+    (plan.md's code block specifies self-start; spec.md's shorter table entry omits it).
+  - Target is the JoinedTrip's shareToken, which is what the participants route resolves against.
+
+Deviations:
+  - None from the plan. Both regression checks the plan predicted held: feature 017's spec still
+    reports 17 passed and feature 018's still reports 14 passed, so no existing assertion in either
+    counts links or buttons in a way this additive link could disturb.
+  - Deferred, non-blocking: REFERENCE.md's JoinTrip.tsx entry enumerates what the delegated summary
+    renders and now omits the "View participants" link, so it reads as non-exhaustive one line above
+    the entry that was just corrected. Nothing in it is false - the enumeration is incomplete, not
+    wrong - so it was left for the same REFERENCE.md accuracy pass that owns the stale
+    "only other implemented pieces so far" paragraph from Task 5's follow-up. Both are pre-existing
+    style/coverage debt in that file, not statements this feature made wrong.
+
+Files Changed:
+  - components/JoinedTripSummary.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+  npx playwright test e2e/017-join-a-shared-trip-via-link.spec.ts        -> exit 0, "17 passed (18.9s)" (matches Expected)
+  npx playwright test e2e/018-switch-between-multiple-trips.spec.ts      -> exit 0, "14 passed (16.4s)" (matches Expected)
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+
+=====================================================================
+Task 10: [Behavioral] — Playwright coverage for the full feature
+Completed: 2026-09-18
+Commit: f3c7560
+
+Summary:
+  Added e2e/019-manage-trip-participants.spec.ts covering all ten acceptance scenarios
+  (E2E-019-01..10) in one spec, with local createRealTripLink / joinViaApi / buildJoinedTrip /
+  seedStorage helpers duplicated from the 017 and 018 specs rather than imported across files.
+
+Key Decisions:
+  - Two independent gates, not one combined gate: the tag is [Behavioral], which the profile's tier
+    table does not list, and it is neither pure UI nor route wiring. Spec coverage and test quality
+    are genuinely distinct review questions here, so both concerns got their own fresh reviewer.
+  - Row clicks are scoped to the participant's own <li> and confirm clicks to role="dialog", since
+    the row button and the modal's confirm button share the accessible name "Remove"/"Leave" and a
+    bare name locator would collide under strict mode.
+  - The friendly-error assertion is scoped to ManageParticipants.tsx's own container, per
+    .claude/repo-profile.md's warning about Next.js's page-level route announcer.
+  - Implementer deviation accepted by the spec gate: a waitForParticipantsScreen() helper extends
+    only the single initial "screen has loaded" wait to 15s (a dev-mode first-compile allowance).
+    The gate verified it cannot mask a defect - the container it waits for is rendered by both the
+    ready and the error branch and not at all while the component returns null, and every absence
+    assertion is preceded by a positive one.
+  - Two further implementer deviations accepted: added vacuity guards in E2E-019-03/05 (strengthening,
+    since an absence assertion alone would pass on a blank page), and E2E-019-09 exercising the
+    creator's Remove path per the plan where spec.md §4's row says "Leave" - both funnel through the
+    identical collapsed failure branch before any role-dependent code.
+
+Deviations:
+  - No REFERENCE.md change, and that is correct: §4 lists e2e/ only as a directory and never
+    enumerates individual spec files, so no doc fact went stale.
+  - Two non-blocking hardening suggestions recorded, neither actioned:
+      * E2E-019-07 selects the second same-named row by index (nth(1)), which is correct only
+        because the GET orders by createdAt ascending. The test's own API cross-check turns a
+        mis-selection into a failure rather than a false pass, so it is stable in practice.
+      * the 15s wait's cold-cache margin is plausible but was never measured against a genuinely
+        cold .next; if it is hardened later it belongs in playwright.config.ts (shared by 016-018)
+        rather than in one spec file.
+  - Environment note, not a defect: on a cold or disturbed dev server the spec can fail all ten
+    tests on the first POST /api/trips with a JSON SyntaxError, because createRealTripLink (like
+    017's and 018's own helpers) does not check response.ok before parsing. Re-running against a
+    settled server gives 10 passed; the quality gate got 10 passed twice plus a workers=1 pass.
+
+Files Changed:
+  - e2e/019-manage-trip-participants.spec.ts (created)
+
+Verification:
+  npx playwright test e2e/019-manage-trip-participants.spec.ts -> exit 0, "10 passed" (both gates re-ran it independently and agreed)
+  npx tsc --noEmit -> exit 0, no output (matches Expected)
+  npm run lint     -> exit 0, banner only (matches Expected)
+  npm run build    -> exit 0, "Compiled successfully", route table includes all three 019 routes
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================

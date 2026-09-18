@@ -99,8 +99,13 @@ test.describe("feature 009 — show more / show less recent transactions", () =>
     await showMore.click();
     await expect(links).toHaveCount(15);
 
+    // Each click is followed by a URL assertion: <Link> navigation commits
+    // asynchronously, so clicking the second link straight after the first can
+    // land while the first route is still in flight and cancel it.
     await page.getByRole("link", { name: "Settings" }).click();
+    await expect(page).toHaveURL("/settings");
     await page.getByRole("link", { name: "Home" }).click();
+    await expect(page).toHaveURL("/");
 
     await expect(links).toHaveCount(5);
     await expect(showMore).toBeVisible();

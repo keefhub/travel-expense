@@ -49,3 +49,8 @@ export interface JoinedTrip {
   participantName: string;
   trip: SharedTripSummary;
 }
+
+export interface ParticipantSummary {
+  id: string;
+  name: string;
+}
