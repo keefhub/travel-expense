@@ -137,6 +137,14 @@ Rules:
   suggests.
 - **Data, backend, and UI changes are always separate tasks.** In this repo that reads: `lib/storage/**`, `lib/<domain>/**`, and `components/` + `app/` never share a task.
 - **A step containing "and also", or a second verb, gets split.** "Add the field and wire it to storage" is two steps.
+- **Every task must be executable from its own section alone, with no other task open.** The
+  implementer dispatched on a task sees that task's text plus the core context packet and one
+  layer slice (`.claude/repo-profile.md` § Model tiers) — never the rest of the plan, never a prior
+  task's steps. Never write "as defined in Task 2", "same shape as the previous task", or "matching
+  the pattern used above" — copy the actual shape, name, or literal into this task's text. If a
+  detail truly cannot be repeated (e.g. it doesn't exist until a prior task lands), name the exact
+  file and export the implementer should read, not the task number: `read the `Expense` type from
+  `lib/types.ts`" survives a fresh dispatch; `"per Task 2"` does not.
 - Every task opens with a **Files** manifest before its first step:
 
 ```markdown
@@ -208,10 +216,42 @@ acceptable contract is stricter than it would be for a stronger implementer:
   list above is a floor here, not the ceiling — also give literal code for anything with more than
   one plausible correct shape (a `reduce` with a non-obvious accumulator, a conditional a reviewer
   could reasonably read two ways).
+- **Order Behavior branches the way the code must check them, not the way they occur to you.**
+  When two conditions can both be true for the same input (e.g. "blank" and "duplicate" on an empty
+  duplicate-named category), state the check order explicitly — `blank checked before duplicate` —
+  rather than leaving the implementer to pick an order that silently changes which error wins.
+- **Give the exact import statement whenever the module path or export name isn't obvious from the
+  surrounding contract**, e.g. `import { getActiveTrip } from "@/lib/storage/trip";` — a smaller
+  model guesses at re-export locations (default vs. named, barrel file vs. direct path) more often
+  than it should.
+- **Name every file this task must NOT touch, not just the ones it must.** A smaller model tends to
+  "helpfully" fix an adjacent-looking issue it notices while it has a file open. If a task edits
+  `components/ExpenseForm.tsx` but must leave `lib/storage/expenses.ts` untouched even though it
+  looks related, say so in `Constraints:` — don't rely on the implementer inferring the boundary.
 - Pass C (below) already checks a plan "as someone who will build from it alone, with no access to
   the conversation that produced it" — when reconciling its findings, resolve any ambiguity it
   flags by tightening the contract per the rules above, not by trusting the implementer to infer the
   intended reading correctly.
+
+**Worked example — vague vs. calibrated:**
+
+```
+✗ Vague (fine for a frontier model, not for Haiku):
+  Behavior: validates the amount field and shows an error if it's bad.
+
+✓ Calibrated:
+  Behavior:
+    amount === "" -> errors.amount = "Enter an amount."
+    Number(amount) is NaN -> errors.amount = "Enter a valid number."
+    Number(amount) <= 0 -> errors.amount = "Enter an amount greater than 0."
+    otherwise -> no errors.amount key at all (not "", not undefined — key absent)
+  Constraints: check in this exact order (empty-string check first — Number("") is 0,
+  not NaN, so checking numeric validity first would misreport a blank field as "0")
+```
+
+The vague version is technically true and a frontier model would likely produce the calibrated
+behavior anyway by inferring intent. Haiku has no such margin — it will implement *a* reading of
+"bad", just not reliably the one you meant.
 
 **Keep the red→green loop.** This repo has no unit-test runner, so the compiler is the red signal,
 and it is a real one — `TS2305` asserts that *a named export with a declared shape* is missing, not
@@ -286,6 +326,9 @@ Check the draft yourself:
 - Symbol names, file paths, and type names are consistent across tasks — `validateExpense` in Task 3 is not `validateExpenseForm` in Task 6.
 - No task violates a negative constraint from Step 1.
 - Every step has a verification command and an expected output.
+- No task says "as in Task N", "same pattern as above", or otherwise points at another task's text
+  instead of restating the needed shape, name, or literal inline (§ "Calibrating contracts for a
+  smaller implementer" — the implementer never sees other tasks).
 
 ### Pass A.5 — Independent coverage check (every plan)
 
@@ -344,10 +387,14 @@ Dispatch a **general-purpose subagent** with the draft plan and a one-sentence s
 
 Dispatch a **general-purpose subagent** with this exact prompt:
 
-> Review this implementation plan as a competent engineer who will have to build from it alone, with
-> no access to the conversation that produced it, and who will resolve any ambiguity by guessing
-> rather than asking — treat every point where two reasonable guesses diverge as a defect, not a
-> detail the implementer can be trusted to infer correctly.
+> Review this implementation plan as it will actually be built: each task below is handed, one at a
+> time, to a separate small/fast model (this repo's implementer runs on Haiku — noticeably weaker
+> than you) that sees ONLY that one task's text, plus a ~3KB repo context packet and one topic slice.
+> It has no conversation history, cannot see the other tasks in this plan, cannot see the source
+> requirements below (they're for your review only, not given to the implementer), and will resolve
+> any ambiguity by guessing once rather than asking. Treat every point where two reasonable guesses
+> diverge as a defect — do not give the implementer credit for inferring the intended reading, even
+> where a stronger model obviously would.
 >
 > PLAN:
 > <paste the full plan>
@@ -355,14 +402,21 @@ Dispatch a **general-purpose subagent** with this exact prompt:
 > SOURCE REQUIREMENTS:
 > <paste the source document>
 >
-> Check four things:
+> Check five things:
 >
 > 1. **Completeness** — is any step missing information an implementer needs? Does every step have a verification command and a concrete expected output?
 > 2. **Alignment** — does the plan build what the source asks for, no more and no less?
 > 3. **Task boundaries** — is any task too large for one session (more than 8 steps), or does any single task mix data, domain, and UI work that should be separate?
 > 4. **Buildability** — can the tasks be executed in the written order, with each task's verification actually passing at that point? Name any task that depends on something a later task creates.
+> 5. **Self-containment** — does any task assume knowledge that lives outside its own text: a
+>    reference to another task by number ("as in Task 2"), an unstated codebase convention, a type
+>    or shape defined elsewhere but not restated, or a file the implementer would need to go read to
+>    understand what's being asked? Name the exact phrase and what's missing.
 >
-> CALIBRATION: flag only what would make an implementer build the wrong thing or get stuck. Wording, formatting, tone, and stylistic preferences are NOT issues — do not report them. If a section is fine, say so in one line and move on.
+> CALIBRATION: flag only what would make this specific implementer (small model, task-isolated, no
+> chance to ask) build the wrong thing or get stuck — not what would trip up a generalist engineer
+> with full repo context. Wording, formatting, tone, and stylistic preferences are NOT issues — do
+> not report them. If a section is fine, say so in one line and move on.
 >
 > For each issue: name the task number, state what an implementer would get wrong, and give the fix.
 

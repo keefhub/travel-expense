@@ -32,6 +32,12 @@ Runtime deps: `next`/`react`/`react-dom`, plus (since 016) `@neondatabase/server
 only backend/database dependencies in this repo, used solely by `lib/db.ts` and `app/api/**`. No
 chart, date, form, or state library. Never add a dependency silently; raise it first.
 
+**`prisma generate` is mandatory before typecheck/build.** Prisma 7's `@prisma/client` has no
+`postinstall` hook (unlike ≤6), and `@prisma/client/default.d.ts` is only `export * from
+'.prisma/client/default'` — generated into `node_modules/.prisma/client`, never committed. Without
+generating, `import { PrismaClient }` fails with `TS2305: has no exported member 'PrismaClient'`.
+`package.json` therefore runs it in both `postinstall` and `build`.
+
 ## Layers (task/file boundaries)
 
 | Layer  | Path               | Holds                                                        |
