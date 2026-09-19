@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { getTripBalances } from "@/lib/balances";
-import type { BalanceExpenseInput } from "@/lib/balances";
+import type { BalanceExpenseInput, BalanceSettlementInput } from "@/lib/balances";
 
 export async function GET(
   request: Request,
@@ -43,6 +43,8 @@ export async function GET(
 
     const rates = await db.exchangeRate.findMany({ where: { tripId: id } });
 
+    const settlements = await db.settlement.findMany({ where: { tripId: id } });
+
     // Read the snapshot columns rather than the live foreign keys: a departed
     // participant's FK is null but their snapshot survives.
     const balanceExpenses: BalanceExpenseInput[] = expenses.map((expense) => ({
@@ -57,10 +59,17 @@ export async function GET(
       })),
     }));
 
+    const balanceSettlements: BalanceSettlementInput[] = settlements.map((s) => ({
+      fromId: s.fromId,
+      toId: s.toId,
+      amount: s.amount,
+    }));
+
     const balances = getTripBalances(
       balanceExpenses,
       trip.currency,
-      rates.map((r) => ({ currency: r.currency, rate: r.rate }))
+      rates.map((r) => ({ currency: r.currency, rate: r.rate })),
+      balanceSettlements
     );
 
     return Response.json(
