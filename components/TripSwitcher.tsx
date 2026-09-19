@@ -58,7 +58,7 @@ export default function TripSwitcher(): JSX.Element | null {
         type="button"
         aria-label="Switch trip"
         onClick={() => setIsOpen(true)}
-        className="text-sm"
+        className="btn-text"
       >
         {activeEntry.label} — {ROLE_LABEL[activeEntry.role]}
       </button>
