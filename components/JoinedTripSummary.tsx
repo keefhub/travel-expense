@@ -39,6 +39,12 @@ export default function JoinedTripSummary({
       >
         Add expense
       </Link>
+      <Link
+        href={`/trips/${joinedTrip.shareToken}/balances`}
+        className="link self-start"
+      >
+        View balances
+      </Link>
     </div>
   );
 }
