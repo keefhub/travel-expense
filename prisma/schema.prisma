@@ -17,6 +17,9 @@ model Trip {
   creatorToken       String   @unique
   createdAt          DateTime @default(now())
   participants       Participant[]
+  expenses           Expense[]
+  exchangeRates      ExchangeRate[]
+  settlements        Settlement[]
 }
 
 model Participant {
@@ -26,5 +29,61 @@ model Participant {
   name             String
   participantToken String   @unique
   createdAt        DateTime @default(now())
+  @@index([tripId])
+  expensesPaid     Expense[]      @relation("ExpensePayer")
+  expenseShares    ExpenseShare[] @relation("ExpenseShareParticipant")
+}
+
+model Expense {
+  id                 String   @id @default(cuid())
+  tripId             String
+  trip               Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  amount             Float
+  currency           String
+  category           String
+  date               DateTime
+  paymentMethod      String
+  location           String
+  description        String?
+  payerParticipantId String?
+  payerParticipantIdSnapshot String?
+  payer              Participant?   @relation("ExpensePayer", fields: [payerParticipantId], references: [id], onDelete: SetNull)
+  payerName          String
+  shares             ExpenseShare[]
+  createdAt          DateTime @default(now())
+  @@index([tripId])
+}
+
+model ExpenseShare {
+  id            String       @id @default(cuid())
+  expenseId     String
+  expense       Expense      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  participantId String?
+  participantIdSnapshot String?
+  participant   Participant? @relation("ExpenseShareParticipant", fields: [participantId], references: [id], onDelete: SetNull)
+  name          String
+  amount        Float
+  @@index([expenseId])
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  currency  String
+  rate      Float
+  createdAt DateTime @default(now())
+  @@unique([tripId, currency])
+  @@index([tripId])
+}
+
+model Settlement {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  fromId    String?
+  toId      String?
+  amount    Float
+  createdAt DateTime @default(now())
   @@index([tripId])
 }

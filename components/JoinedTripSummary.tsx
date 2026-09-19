@@ -33,6 +33,18 @@ export default function JoinedTripSummary({
       >
         View participants
       </Link>
+      <Link
+        href={`/trips/${joinedTrip.shareToken}/expenses/new`}
+        className="link self-start"
+      >
+        Add expense
+      </Link>
+      <Link
+        href={`/trips/${joinedTrip.shareToken}/balances`}
+        className="link self-start"
+      >
+        View balances
+      </Link>
     </div>
   );
 }

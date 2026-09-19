@@ -122,6 +122,10 @@ export default function ShareTripLink({ trip }: { trip: Trip }) {
       <Link href={`/trips/${link.shareToken}/participants`} className="link">
         Manage participants
       </Link>
+
+      <Link href={`/trips/${link.shareToken}/balances`} className="link">
+        View balances
+      </Link>
     </div>
   );
 }

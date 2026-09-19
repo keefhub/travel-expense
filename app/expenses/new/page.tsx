@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { Trip } from "@/lib/types";
-import { getTrip } from "@/lib/storage";
+import { getTrip, getSharedTripLink } from "@/lib/storage";
 import ExpenseForm from "@/components/ExpenseForm";
 
 type TripSnapshot = Trip | null | undefined;
@@ -37,10 +37,19 @@ export default function RecordExpensePage() {
   useEffect(() => {
     if (trip === null) {
       router.replace("/");
+      return;
+    }
+    const sharedLink = getSharedTripLink();
+    if (sharedLink !== null) {
+      router.replace(`/trips/${sharedLink.shareToken}/expenses/new`);
     }
   }, [trip, router]);
 
   if (trip === undefined || trip === null) {
+    return null;
+  }
+
+  if (getSharedTripLink() !== null) {
     return null;
   }
 
