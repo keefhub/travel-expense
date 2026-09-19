@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 // React 19's types no longer declare a global JSX namespace, so the return type
 // below is imported from "react" rather than referenced bare (same reason as
 // components/TripSwitcher.tsx).
 import type { JSX } from "react";
-import type { TripBalancesResult } from "@/lib/types";
+import type { BalanceLine, TripBalancesResult } from "@/lib/types";
 import { getSharedTripLink, getJoinedTrips } from "@/lib/storage";
 import { findJoinedTrip } from "@/lib/join";
-import { fetchTripBalances } from "@/lib/balances";
+import { fetchTripBalances, settleBalance } from "@/lib/balances";
 import type { ParticipantAuth } from "@/lib/participants";
+import { TRIP_CREATOR_ID } from "@/lib/sharedExpenses";
+import ConfirmSettleBalance from "@/components/ConfirmSettleBalance";
 
 type ResolvedRole =
   | { kind: "creator"; tripId: string; token: string }
@@ -29,6 +31,9 @@ export default function TripBalances({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [balances, setBalances] = useState<TripBalancesResult | null>(null);
   const [tripCurrency, setTripCurrency] = useState<string>("");
+  const [confirmTarget, setConfirmTarget] = useState<BalanceLine | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const settlingRef = useRef(false);
 
   useEffect(() => {
     async function load() {
@@ -80,6 +85,42 @@ export default function TripBalances({
     load();
   }, [token, router]);
 
+  async function handleSettleConfirm(amount: number) {
+    if (role === null || confirmTarget === null || settlingRef.current) return;
+    settlingRef.current = true;
+
+    try {
+      const auth: ParticipantAuth =
+        role.kind === "creator"
+          ? { role: "creator", token: role.token }
+          : { role: "participant", token: role.token };
+
+      const fromId =
+        confirmTarget.fromId === TRIP_CREATOR_ID ? null : confirmTarget.fromId;
+      const toId =
+        confirmTarget.toId === TRIP_CREATOR_ID ? null : confirmTarget.toId;
+
+      const result = await settleBalance(
+        role.tripId,
+        { fromId, toId, amount },
+        auth
+      );
+
+      if (!result.ok) {
+        setActionError(result.error);
+        setConfirmTarget(null);
+        return;
+      }
+
+      setActionError(null);
+      setBalances(result.balances);
+      setTripCurrency(result.tripCurrency);
+      setConfirmTarget(null);
+    } finally {
+      settlingRef.current = false;
+    }
+  }
+
   if (role === null || loadState === "loading") return null;
 
   if (loadState === "error") {
@@ -94,6 +135,7 @@ export default function TripBalances({
   return (
     <div className="flex flex-col gap-4 p-4">
       <h1 className="text-xl font-semibold">Balances</h1>
+      {actionError && <p role="alert">{actionError}</p>}
       {balances !== null &&
         (balances.isComplete === false ? (
           <p role="status">
@@ -106,15 +148,35 @@ export default function TripBalances({
         ) : (
           <ul className="flex flex-col divide-y divide-(--border)">
             {balances.lines.map((line) => (
-              <li key={`${line.fromId}-${line.toId}`} className="py-2">
-                {`${line.fromName} owes ${line.toName} `}
-                <span className="font-mono">
-                  {`${tripCurrency} ${line.amount.toFixed(2)}`}
+              <li
+                key={`${line.fromId}-${line.toId}`}
+                className="flex items-center justify-between gap-2 py-2"
+              >
+                <span>
+                  {`${line.fromName} owes ${line.toName} `}
+                  <span className="font-mono">
+                    {`${tripCurrency} ${line.amount.toFixed(2)}`}
+                  </span>
                 </span>
+                <button
+                  type="button"
+                  className="btn-text"
+                  onClick={() => setConfirmTarget(line)}
+                >
+                  Settle
+                </button>
               </li>
             ))}
           </ul>
         ))}
+      {confirmTarget && (
+        <ConfirmSettleBalance
+          line={confirmTarget}
+          tripCurrency={tripCurrency}
+          onConfirm={handleSettleConfirm}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   );
 }

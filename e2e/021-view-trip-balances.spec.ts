@@ -270,11 +270,11 @@ test.describe("feature 021 — view trip balances", () => {
       "Blair owes Trip creator SGD 10.00"
     );
 
-    // Read-only view: no settlement line carries an action control.
+    // Feature 022 added a per-line Settle control, so this view is no longer
+    // read-only: each settlement line carries a visible Settle button.
     for (let i = 0; i < 2; i += 1) {
       const row = rows.nth(i);
-      await expect(row.getByRole("button")).toHaveCount(0);
-      await expect(row.getByRole("link")).toHaveCount(0);
+      await expect(row.getByRole("button", { name: "Settle" })).toBeVisible();
     }
   });
 
@@ -479,7 +479,9 @@ test.describe("feature 021 — view trip balances", () => {
     const rows = await waitForSettlementLines(page, 2);
 
     const amounts: number[] = [];
-    for (const text of await rows.allTextContents()) {
+    // The row's own text now carries feature 022's "Settle" button label, so
+    // read the amount's span rather than the whole row.
+    for (const text of await rows.locator("span.font-mono").allTextContents()) {
       // Every rendered amount sits at the end of its line, rounded to 2dp.
       expect(text).toMatch(/\d+\.\d{2}$/);
       const match = /(\d+\.\d{2})$/.exec(text);
