@@ -19,6 +19,7 @@ model Trip {
   participants       Participant[]
   expenses           Expense[]
   exchangeRates      ExchangeRate[]
+  settlements        Settlement[]
 }
 
 model Participant {
@@ -73,5 +74,16 @@ model ExchangeRate {
   rate      Float
   createdAt DateTime @default(now())
   @@unique([tripId, currency])
+  @@index([tripId])
+}
+
+model Settlement {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  fromId    String?
+  toId      String?
+  amount    Float
+  createdAt DateTime @default(now())
   @@index([tripId])
 }
