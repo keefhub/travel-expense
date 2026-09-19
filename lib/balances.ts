@@ -14,10 +14,17 @@ export interface BalanceExpenseInput {
   shares: { id: string | null; name: string; amount: number }[];
 }
 
+export interface BalanceSettlementInput {
+  fromId: string | null; // null = trip creator, same convention as BalanceExpenseInput.payerId
+  toId: string | null; // null = trip creator
+  amount: number; // trip-currency; a settlement is never expressed in another currency
+}
+
 export function getTripBalances(
   expenses: BalanceExpenseInput[],
   tripCurrency: string,
-  rates: Pick<SharedExchangeRate, "currency" | "rate">[]
+  rates: Pick<SharedExchangeRate, "currency" | "rate">[],
+  settlements: BalanceSettlementInput[] = []
 ): TripBalancesResult {
   const usedCurrencies = Array.from(
     new Set(expenses.map((e) => e.currency).filter((c) => c !== tripCurrency))
@@ -71,6 +78,14 @@ export function getTripBalances(
       }
       addNet(shareId, share.name, -shareCents);
     });
+  }
+
+  for (const settlement of settlements) {
+    const fromId = settlement.fromId ?? TRIP_CREATOR_ID;
+    const toId = settlement.toId ?? TRIP_CREATOR_ID;
+    const cents = Math.round(settlement.amount * 100);
+    addNet(fromId, names.get(fromId) ?? "", cents);
+    addNet(toId, names.get(toId) ?? "", -cents);
   }
 
   const creditors = Array.from(netCents.entries())
@@ -129,6 +144,72 @@ export async function fetchTripBalances(
   try {
     const response = await fetch(`/api/trips/${tripId}/balances`, {
       headers: authHeaders(auth),
+    });
+
+    if (!response.ok) {
+      return { ok: false, error: FRIENDLY_ERROR };
+    }
+
+    const data = (await response.json()) as {
+      balances: TripBalancesResult;
+      tripCurrency: string;
+    };
+
+    return {
+      ok: true,
+      balances: data.balances,
+      tripCurrency: data.tripCurrency,
+    };
+  } catch {
+    return { ok: false, error: FRIENDLY_ERROR };
+  }
+}
+
+export type SettlementAmountValidation =
+  | { valid: true; amount: number }
+  | { valid: false; error: string };
+
+export function validateSettlementAmount(
+  amountInput: string,
+  outstandingAmount: number
+): SettlementAmountValidation {
+  const trimmed = amountInput.trim();
+  const amount = Number(trimmed);
+
+  if (trimmed === "" || !Number.isFinite(amount) || amount <= 0) {
+    return { valid: false, error: "Enter a valid amount greater than zero." };
+  }
+
+  if (Math.round(amount * 100) > Math.round(outstandingAmount * 100)) {
+    return {
+      valid: false,
+      error: "This amount is more than the outstanding balance.",
+    };
+  }
+
+  return { valid: true, amount };
+}
+
+export interface SettleBalanceInput {
+  fromId: string | null;
+  toId: string | null;
+  amount: number;
+}
+
+export type SettleBalanceResult =
+  | { ok: true; balances: TripBalancesResult; tripCurrency: string }
+  | { ok: false; error: string };
+
+export async function settleBalance(
+  tripId: string,
+  input: SettleBalanceInput,
+  auth: ParticipantAuth
+): Promise<SettleBalanceResult> {
+  try {
+    const response = await fetch(`/api/trips/${tripId}/settlements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(auth) },
+      body: JSON.stringify(input),
     });
 
     if (!response.ok) {
