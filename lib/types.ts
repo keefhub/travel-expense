@@ -75,3 +75,24 @@ export interface SharedExpense {
   payerName: string; // snapshot, same rationale as SharedExpenseShare.name
   shares: SharedExpenseShare[];
 }
+
+export interface SharedExchangeRate {
+  id: string;
+  tripId: string;
+  currency: string;
+  rate: number;
+}
+
+export interface BalanceLine {
+  fromId: string; // TRIP_CREATOR_ID (from lib/sharedExpenses.ts) or a Participant id
+  fromName: string;
+  toId: string;
+  toName: string;
+  amount: number; // trip-currency, rounded to 2 decimal places
+}
+
+export interface TripBalancesResult {
+  lines: BalanceLine[];
+  isComplete: boolean;
+  missingCurrencies: string[]; // non-trip currencies used in expenses with no rate on file
+}
