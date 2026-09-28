@@ -56,6 +56,7 @@ Features are numbered by spec/reading order, not build order. Build foundation a
 | 20    | `020.attribute-an-expense-to-payer-and-split.md` | Needs real participants to attribute expenses to |
 | 21    | `021.view-trip-balances.md`              | Needs split data to compute balances from |
 | 22    | `022.settle-up-a-balance.md`             | Needs balances to settle against; completes the v2 shared-trip initiative |
+| 23    | `023.create-a-trip-as-a-shared-trip.md`  | First slice of the retire-v1 initiative — every trip becomes server-backed from creation, with a share link available immediately; the new entry point everything else in this initiative assumes |
 
 Do not reorder or skip features without an explicit user request. Do not implement scenarios or features beyond what's written in the spec files.
 

@@ -1,0 +1,856 @@
+=====================================================================
+Task 1: [Types] — lib/types.ts gains SharedExpense/SharedExpenseShare
+Completed: 2026-09-18
+Commit: 02598ce
+
+Summary:
+  Appended SharedExpenseShare and SharedExpense to lib/types.ts after ParticipantSummary. Both
+  match spec.md 2.3 exactly: description optional, participantId/payerParticipantId nullable with
+  null meaning the trip creator, plus name snapshots on both share and payer.
+
+Key Decisions:
+  REFERENCE.md line 109 (the lib/types.ts interface inventory) was updated in this same diff by the
+  controller, per the "REFERENCE.md updated in the same task's diff" rule - the inventory would
+  otherwise stop matching the code. This path is not in the task's Files manifest because the
+  controller owns it, not the implementer.
+
+Deviations:
+  None. No existing type was modified; nothing beyond lib/types.ts and REFERENCE.md changed.
+
+Files Changed:
+  - lib/types.ts (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+  Non-blocking notes from the quality gate: memories/repo/slices/types.md is stale (does not list
+  SharedTripSummary/JoinedTrip/ParticipantSummary either, from 016/017/019); slice refreshes land as
+  standalone chore: commits in this repo, so it is deliberately not folded into this commit.
+=====================================================================
+=====================================================================
+Task 2: [Config] — Prisma schema gains Expense/ExpenseShare
+Completed: 2026-09-18
+Commit: 5868eea
+
+Summary:
+  Added the Expense and ExpenseShare models plus their relations on Trip/Participant, regenerated
+  the Prisma client, and applied migration 20260918144506_add_expense_and_expense_share against the
+  live Neon database. Both participant FKs are nullable with onDelete: SetNull, so 019's hard
+  db.participant.delete() keeps succeeding and a departed member still shows by name via the
+  denormalized payerName/name snapshots.
+
+Key Decisions:
+  REFERENCE.md §4's prisma/schema.prisma and prisma/migrations/ tree lines were updated in this same
+  diff by the controller; neither path is in the task's Files manifest because the controller owns
+  the doc update, not the implementer.
+  No layer slice was supplied to the subagents: [Config] is an adapted tag and no slice in the
+  .claude/repo-profile.md table matches it, so the dispatch carried the core packet alone and said
+  so, per that file's "never guess a slice" rule.
+
+Deviations:
+  None from the plan. The migration applied without needing the plan's infrastructure fallback
+  (Neon was reachable); `npx prisma migrate status` confirms "Database schema is up to date!" with
+  4 migrations found.
+  `prisma format` was not run, so field alignment in the edited models follows the plan's literal
+  snippets rather than Prisma's canonical alignment — pre-existing HEAD is already non-canonical, so
+  this matches the file's own style rather than diverging from it.
+
+Files Changed:
+  - prisma/schema.prisma (modified)
+  - prisma/migrations/20260918144506_add_expense_and_expense_share/migration.sql (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx prisma generate -> exit 0, "Generated Prisma Client (v7.10.0)"
+  npx prisma migrate dev --name add_expense_and_expense_share -> exit 0, migration created + applied
+  npx prisma migrate status -> 4 migrations found, "Database schema is up to date!"
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+  Non-blocking finding from the quality gate, carried forward rather than fixed (the plan's contract
+  specified only tripId/expenseId as indexed, so widening it here would be out-of-plan scope):
+  the two FK columns behind the SetNull relations — Expense.payerParticipantId and
+  ExpenseShare.participantId — have no @@index, while this repo's own documented convention
+  (REFERENCE.md: "Postgres does not auto-index FK columns") indexes FK columns. Consequence is a
+  full scan of Expense/ExpenseShare when 019's participant delete applies the SET NULLs; negligible
+  at this app's data scale. Candidate follow-up: add @@index([payerParticipantId]) and
+  @@index([participantId]) plus a migration.
+=====================================================================
+=====================================================================
+Task 3: [Domain] — lib/sharedExpenses.ts
+Completed: 2026-09-18
+Commit: 5b0400b
+
+Summary:
+  Created lib/sharedExpenses.ts: the TRIP_CREATOR_ID sentinel, AttributionOption/SplitMethod/
+  ExactSplitValidation/CreateSharedExpensePayload/SharedExpenseResult types, the four pure functions
+  (buildAttributionOptions, calculateEvenSplit, validateExactSplit, validateAttribution,
+  toSharesPayload) and the three fetch wrappers. Import surface is type-only (@/lib/types,
+  @/lib/participants) — no storage, no db, no DOM, so the layer boundary holds.
+
+Key Decisions:
+  Two deviations from the plan's literal contract, both approved by the gates:
+  (a) the plan imported SharedExpenseShare but wrote every shares signature as the inline literal
+      { participantId: string | null; amount: number }[], leaving that import unused and producing an
+      ESLint unused-vars warning that would have broken the step's own Expected line. An unexported
+      type ShareInput = Pick<SharedExpenseShare, "participantId" | "amount"> replaces the literal;
+      Pick of two required fields of SharedExpenseShare resolves to exactly the plan's shape, so the
+      public surface is unchanged.
+  (b) multi-line parameter lists carry no trailing comma, matching lib/participants.ts (the module
+      the plan names as the pattern to mirror); the repo has no Prettier config.
+  REFERENCE.md §4's lib/ block gained a sharedExpenses.ts line in the same diff (controller-owned,
+  so not in the task's Files manifest).
+
+Deviations:
+  None beyond (a) and (b) above.
+
+Files Changed:
+  - lib/sharedExpenses.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  Both gates additionally re-ran the cent arithmetic directly (10.00/3 -> 3.33/3.33/3.34 summing to
+  exactly 10.00) and brute-forced further totals x headcounts with no case failing to sum.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+  Two non-blocking findings, deferred rather than fixed (both trace to the plan's own contract text,
+  so changing them would deviate from the plan; recorded for the user):
+  1. The module comment and REFERENCE.md:130 both say TRIP_CREATOR_ID is "converted to/from null only
+     inside the three fetch wrappers". That is inaccurate: the translation happens in toSharesPayload
+     (id === TRIP_CREATOR_ID ? null : id), while the wrappers pass the already-translated values
+     through, and the payer translation happens at the caller. Both gates flagged this. The sentence
+     was mandated verbatim by the plan's Task 3 contract and repeated in spec.md 2.3.
+  2. toSharesPayload's exact branch forwards Number(exactAmounts[id].trim()) unrounded while
+     validation compares integer cents, so a sub-cent entry pair (e.g. 0.001 + 9.999 against a 10.00
+     total) passes validation and persists non-zero sub-cent shares. Rounding to cents in that branch
+     would close it and cannot break the server's cent-sum check. Also mandated verbatim by the plan.
+=====================================================================
+=====================================================================
+Task 4: [Route] — POST /api/trips/[id]/expenses creates a shared expense
+Completed: 2026-09-18
+Commit: ab64800
+
+Summary:
+  Created app/api/trips/[id]/expenses/route.ts. One POST export: body parsed in its own try/catch
+  (malformed -> 400), then trip lookup (404), auth identical in shape to the participants GET (403),
+  twelve ordered field checks (400 each), a duplicate-share-key check counting a null participantId as
+  "__creator__", an integer-cent sum check against the amount, trip-scoped referential validation,
+  snapshot resolution of payerName and each share name, one nested create with include: { shares: true },
+  and a 201 { expense } response with date serialized as YYYY-MM-DD. Catch logs console.error and
+  returns 500 "Could not save the expense.".
+
+Key Decisions:
+  Deviation from the plan's literal contract (declared and approved by both gates): the plan wrote
+  `let body: any` and `(s: any)` in several places, but eslint-config-next/typescript sets
+  @typescript-eslint/no-explicit-any to error, so shipping those verbatim would fail npm run lint and
+  contradict the step's own Expected line. The shipped code uses `let rawBody: unknown`, a
+  `as Record<string, unknown>` cast, and a local `type ShareInput`. No check order, status code, error
+  string, or resolved value changed. The construct mirrors app/api/trips/route.ts's existing handler.
+  Two side effects of that typing, both benign and both verified by a gate: a body that parses to JSON
+  literal `null` now returns 400 rather than throwing into the 500 path, and `rawBody ?? {}` is a
+  runtime coalesce, not a pure cast.
+  REFERENCE.md §4 gained a line for the new handler in the same diff (controller-owned, so not in the
+  task's Files manifest). The quality gate caught two inaccuracies in that line — a misstated
+  field-check order and a "(220:" typo — both corrected by the controller before the re-review.
+
+Deviations:
+  One, above. The plan's step 4j was struck in plan.md with a pointer to this entry (see fix cycle).
+
+Files Changed:
+  - app/api/trips/[id]/expenses/route.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  npm run build -> exit 0, "Compiled successfully", route table includes /api/trips/[id]/expenses
+
+Review Gate — Spec:    PASS (attempt 1); PASS (attempt 2, after fix)
+Review Gate — Quality: FAIL (attempt 1) -> fix -> PASS (attempt 2)
+
+  Fix cycle 1 (both gates re-run, because the fix touched a file the passing gate had reviewed):
+  the quality gate found that a `null` element in the shares array — e.g. {"shares":[null]} — passed
+  the Array.isArray/length guard, then threw a TypeError on the property read inside the main
+  try/catch, answering 500 "Could not save the expense." instead of 400 "Invalid expense data.".
+  Fixed by filtering body.shares through a type predicate that keeps only genuine plain objects and
+  returning 400 when the filtered length differs, before any property read. The plan's own step 4j
+  throws identically, so this was a plan hole the implementer reproduced faithfully, not an
+  implementer error; the affected step is struck in plan.md and the same warning was added to Task 5's
+  equivalent step, which would otherwise inherit the hole. A gate re-verified that a well-formed
+  payload is unaffected (the guard is unreachable for an all-object array).
+
+  Non-blocking findings carried forward, not fixed (each is either outside this task's diff or
+  mandated by the plan's own text):
+  1. The cent-sum check is vacuous when amount * 100 overflows to Infinity: { amount: 1e307,
+     shares: [{ participantId: null, amount: 9e306 }] } passes because Infinity !== Infinity is false.
+     Both values are finite so Number.isFinite admits them. Fix would be a Number.isSafeInteger guard
+     on totalCents (or bounding amount) — a new validation rule the plan does not specify.
+  2. Shares are validated in integer cents but written unrounded, so a sub-cent pair such as
+     0.001 + 9.999 against 10.00 passes and persists non-zero sub-cent shares. Same root cause logged
+     under Task 3; the fix belongs in lib/sharedExpenses.ts (rounding the shares alone would be wrong
+     when the expense amount is itself sub-cent).
+  3. include: { shares: true } has no orderBy, so response share order is whatever Postgres returns;
+     the participants GET orders explicitly by createdAt. Harmless while consumers key by
+     participantId, noted only for symmetry with the 019 precedent.
+=====================================================================
+=====================================================================
+Task 5: [Route] — GET/PATCH /api/trips/[id]/expenses/[expenseId]
+Completed: 2026-09-18
+Commit: 19de64b
+
+Summary:
+  Created app/api/trips/[id]/expenses/[expenseId]/route.ts with GET and PATCH. A local unexported
+  serialize() helper is shared by both verbs so the two responses cannot drift. GET: trip 404, then
+  expense 404 when absent or when its tripId differs from the URL, then auth, then 200 { expense }.
+  PATCH: body parsed in its own try/catch, then the same 404/auth sequence, then validation mirroring
+  the POST route (including the non-object share guard and the "creator" duplicate-key rule) with the
+  cent sum checked against the EXISTING stored amount rather than any body value, then referential
+  validation scoped to the trip and the same name snapshots, then one db.$transaction that replaces
+  the share rows and updates payerParticipantId/payerName. amount, currency, category, date, payment
+  method, location and description are never read from the body and never written.
+
+Key Decisions:
+  The plan's literal snippets use `any`, which this repo's lint config rejects as an error, so the
+  handler uses `unknown` plus local casts, mirroring the committed Task 4 sibling exactly. The plan's
+  own step 3c carries the NOTE added after Task 4's fix cycle, and the implementation reproduces the
+  sibling's non-object-element guard, so {"shares":[null]} returns 400 rather than throwing into the
+  500 path. Both deviations are declared and were approved by both gates.
+  REFERENCE.md §4 gained a line for the new handler in the same diff (controller-owned, so not in the
+  task's Files manifest).
+
+Deviations:
+  The two declared above. No file beyond the handler and REFERENCE.md changed.
+
+Files Changed:
+  - app/api/trips/[id]/expenses/[expenseId]/route.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  npm run build -> exit 0, "Compiled successfully", route table includes
+    /api/trips/[id]/expenses/[expenseId]
+  Both gates independently re-ran all three commands and confirmed the results.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+  The quality gate additionally verified from the installed adapter's source that lib/db.ts's
+  PrismaNeon factory really supports interactive transactions (the "not supported in HTTP mode" path
+  belongs to PrismaNeonHttp), so the delete-then-update transaction is genuinely atomic here rather
+  than silently non-transactional.
+  Non-blocking observations carried forward, none introduced by this task:
+  1. Math.round(existing.amount * 100) overflows to Infinity above ~1.797e306, and Infinity ===
+     Infinity admits a split that does not sum to the amount. Copied verbatim from the committed
+     sibling POST handler, so no new weakness; a bound would have to land in both files together to
+     avoid the two verbs diverging. Same root cause as Task 4's finding 1.
+  2. include: { shares: true } carries no orderBy in either verb, so response share order is
+     unspecified. Matches the sibling POST and the plan's contract; only worth knowing if a
+     Playwright spec later asserts a rendered split order.
+  3. serialize() duplicates the response shape the POST route still hand-rolls inline; the two are
+     identical today but could drift. Consolidating would be a shared server helper, out of this
+     task's scope (the plan scopes the POST file out).
+  4. The expense-not-found 404 is returned before the auth check, so a caller holding a valid trip id
+     can distinguish "no such expense" from "not authorized". Mandated by the plan and identical to
+     019's participant route.
+=====================================================================
+=====================================================================
+Task 6: [UI] — components/AttributionFields.tsx
+Completed: 2026-09-18
+Commit: e934fb
+
+Summary:
+  Created components/AttributionFields.tsx: a fully controlled component rendering the Payer select
+  over the given options, a "Split method" fieldset with Even/Exact radios, and one row per option
+  under "Split among" carrying a checkbox plus either a read-only font-mono even amount or an exact
+  decimal input labelled "<name> share", with the parent's error shown as role="alert". No internal
+  state at all, so payerId/splitMethod/selectedIds/exactAmounts stay owned by the parent.
+
+Key Decisions:
+  Even amounts are recomputed on every render via calculateEvenSplit rather than stored in state,
+  which is what makes a method switch structurally unable to display a stale amount (BR-020-08).
+  No layer slice mismatch and no type substitution was needed this time: the plan's snippet contained
+  no `any`. The only deviation is prettier-style line wrapping of two expressions.
+  REFERENCE.md §4 gained a components/AttributionFields.tsx line in the same diff (controller-owned).
+
+Deviations:
+  Formatting only, as above.
+
+Files Changed:
+  - components/AttributionFields.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+
+Review Gate — Combined: PASS (attempt 2, after fix)
+  Fix cycle 1: the first combined gate FAILED the task on a REFERENCE.md accuracy gap, not on code.
+  The line the controller added claimed the component "is mounted by components/SharedExpenseForm.tsx
+  and components/SharedExpenseDetail.tsx", but neither file exists yet at this commit (they are Tasks
+  7 and 9), which contradicted both reality and the §4 block's own house convention (019's
+  ConfirmParticipantAction entry reads "not yet mounted anywhere"). Reworded to "not yet mounted —
+  <files> are its mount points", matching the 019 precedent; the re-review confirmed the line is now
+  accurate and that every other claim in it matches the code.
+
+  Non-blocking findings from the passing re-review, carried forward:
+  1. components/AttributionFields.tsx:11 — the file's own comment still names the two parent
+     components without a "does not exist yet" qualifier. Comment-only, and it does not assert
+     mounting, so it is not contradictory; noted as the same forward-reference pattern.
+  2. evenAmounts[option.id].toFixed(2) has no fallback. Safe today because `checked` implies the id
+     is in selectedIds, which is exactly the set calculateEvenSplit keys; tsconfig.json does not
+     enable noUncheckedIndexedAccess. Plan-mandated expression, latent only.
+  3. id="payer" and name="splitMethod" are literals, so two instances on one screen would collide.
+     Not reachable: Task 7 mounts it once, Task 9 mounts it once inside its editing branch, and those
+     are separate routes. Spec-mandated.
+  4. The "Split among" span has no programmatic group association (unlike the split-method
+     fieldset/legend). Spec-mandated markup.
+=====================================================================
+=====================================================================
+Task 7: [UI] — components/SharedExpenseForm.tsx
+Completed: 2026-09-18
+Commit: 0c89800
+
+Summary:
+  Created components/SharedExpenseForm.tsx: resolves the viewing device's role from local storage on
+  mount (creator via getSharedTripLink + getTrip, else participant via findJoinedTrip, else
+  router.replace("/") with no state), defaults the currency to the resolved trip's, loads the roster
+  through getParticipants, pre-selects the viewer as payer and every current member in the split, and
+  renders the same seven base fields ExpenseForm renders followed by components/AttributionFields.tsx.
+  Submit validates with validateExpenseForm + validateAttribution, posts through createSharedExpense
+  with TRIP_CREATOR_ID mapped to null, and redirects to the saved expense's detail page. A useRef
+  guard checked and set before any await prevents a double tap from creating two expenses.
+
+Key Decisions:
+  The plan's `initialValues` bullet was amended (struck in plan.md with a pointer to this entry):
+  its "never updated after mount" rule made isDirty permanently true once the mount effect hydrated
+  values.currency, so the 011 unsaved-changes warning fired on a pristine form and intercepted
+  BottomNav clicks. initialValues is now a settable state, re-snapshotted by the mount effect with
+  the same hydration as values, using two pure functional updaters rather than a setter inside
+  another setter's updater (which the react-hooks plugin treats as impure).
+  The ready-state heading "Record an expense" was added even though the plan's ready bullet did not
+  enumerate it: ExpenseForm.tsx opens with it, the plan's own error branch shows it, the plan asks the
+  field groups to mirror ExpenseForm exactly, and this component is the screen's only h1.
+  Imports are combined with inline `type` qualifiers (ExpenseForm.tsx's style) and resolved.tripCurrency
+  needs no non-null assertion since the preceding guard narrows. Both approved by the gate.
+  REFERENCE.md §4 gained a SharedExpenseForm.tsx line in the same diff (controller-owned).
+
+Deviations:
+  The four declared above. No file beyond the component and REFERENCE.md changed.
+
+Files Changed:
+  - components/SharedExpenseForm.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+
+Review Gate — Combined: FAIL (attempt 1) -> fix -> PASS (attempt 2)
+
+  Fix cycle 1: the gate found that `initialValues` captured `currency: ""` and was never updated,
+  while the mount effect hydrated `values.currency` from the resolved trip, so `isDirty` was true from
+  the first ready render. Effects: refreshing an untouched form showed the browser leave prompt, any
+  BottomNav click was intercepted with window.confirm, and the load-error branch was dirty too — all
+  contradicting features/011's first scenario. Fixed as described in Key Decisions; the re-review
+  traced the three states and confirmed pristine-post-hydration is clean while a genuine edit still
+  dirties, and that no in-place mutation makes the shared first-render object reference alias.
+
+  Non-blocking findings carried forward, not fixed:
+  1. The date field renders errors.date but not ExpenseForm.tsx's role="status" out-of-range trip-date
+     warning, which validateExpenseForm returns in warnings.date. The Task 7 contract enumerates only
+     role="alert" errors and spec.md has no requirement mentioning the warning (no BR, no AC, no E2E
+     row), so this is plan-conformant rather than a defect — but it is a real divergence from the solo
+     form worth a follow-up decision, since a shared expense dated outside the trip range saves with
+     no advisory.
+  2. The in-flight ref guard is reset in the finally on the success path too, so between router.push
+     and the navigation committing the button is re-enabled and a further tap could POST again. The
+     plan explicitly called this "harmless, since the component is navigating away", so it was left as
+     written; the fix would be to reset the guard only when the save did not succeed.
+  3. payerId is seeded from resolved.myOptionId without checking it appears in options. A participant
+     removed by the creator still has a joinedTrips entry (only self-leave prunes it), so the select
+     would visually fall back to "Trip creator" while state holds the removed id, and submit would 400
+     with a misleading network-error message. No bad data is created. Needs a spec/plan decision, so
+     it was not changed unilaterally.
+  4. The two `new Date().toISOString().slice(0, 10)` initializers are evaluated independently, so a
+     UTC-midnight rollover between them would render the form already dirty. Made moot by the fix for
+     the blocking finding, which seeds initialValues from values rather than a second literal.
+  5. location is sent untrimmed from the client; the server trims it, so nothing is observable, and
+     the payload literal is plan-specified.
+  6. The mount effect has no cancellation/mounted flag, so a slow getParticipants could land after
+     token changes. Exactly the shape components/ManageParticipants.tsx already uses.
+=====================================================================
+=====================================================================
+Task 8: [Route] — app/trips/[token]/expenses/new/page.tsx
+Completed: 2026-09-18
+Commit: 8791253
+
+Summary:
+  Created the shared-trip record-expense route: an 11-line 'use client' page that unwraps { token }
+  via React's use(props.params) and renders components/SharedExpenseForm.tsx. It reads no trip-gate
+  store and does not redirect, matching app/trips/[token]/page.tsx and .../participants/page.tsx, so a
+  participant whose device has no local solo trip can still reach the screen; the component's own
+  stray-visitor guard supplies AC-020-16's redirect.
+
+Key Decisions:
+  The task header wrote the export as returning JSX.Element, but the plan's own code block omits the
+  annotation and neither sibling route file imports `type JSX` or annotates a return type (that
+  convention lives in components/, not app/**/page.tsx). The implementer followed the real siblings
+  and the code block; the gate confirmed this makes the page more consistent with the repo than the
+  plan's literal wording, with no loss of type safety under strict. No return annotation shipped.
+  REFERENCE.md §4 gained a route line in the same diff (controller-owned). Its first draft claimed a
+  creator reaching the screen "may have no local solo trip at all", which contradicts the component's
+  own creator branch (gated on a local getTrip()) and REFERENCE.md's SharedExpenseForm entry; the gate
+  caught it and the controller applied the reviewer's exact replacement wording before the re-review.
+
+Deviations:
+  One, above (no return annotation). No file beyond the page and REFERENCE.md changed.
+
+Files Changed:
+  - app/trips/[token]/expenses/new/page.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build -> exit 0, "Compiled successfully", route table includes /trips/[token]/expenses/new
+  npx tsc --noEmit -> exit 0, no output (the TS2344 caveat never surfaced, because the build ran first)
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  The gate re-ran all three independently and reproduced these results.
+
+Review Gate — Combined: PASS (attempt 2, after a doc-wording fix)
+
+  Fix cycle 1 was doc-only: the first gate PASSed the code and flagged one inaccurate clause in the
+  controller's new REFERENCE.md line (above). The controller applied the reviewer's exact wording and
+  the re-review confirmed the line is now internally consistent with the SharedExpenseForm.tsx entry
+  and claims no link or redirect that does not yet exist at this commit.
+
+  Carried-forward doc staleness, deliberately NOT fixed here: REFERENCE.md's entries for
+  AttributionFields.tsx and SharedExpenseForm.tsx both still end "not yet mounted", which Task 8 has
+  now made false (SharedExpenseForm is mounted at this route, and AttributionFields transitively
+  through it). The gate recommended folding that sweep into a later task that already edits
+  REFERENCE.md rather than reopening this commit, so it is deferred to the Task 9 diff, where Task 9's
+  own gate will review it as part of that change.
+=====================================================================
+=====================================================================
+Task 9: [UI] — components/SharedExpenseDetail.tsx
+Completed: 2026-09-18
+Commit: fa2792f
+
+Summary:
+  Created components/SharedExpenseDetail.tsx: resolves the viewing device's role from local storage
+  (share link -> creator, else joined-trips entry -> participant, else redirect home with no fetch),
+  Promise.all()s getSharedExpense and getParticipants, and renders a view-only field list plus the
+  split read from the saved share snapshots so a departed member still shows by name. "Edit split"
+  swaps in AttributionFields with options built from the current roster only, seeds the amounts from
+  the loaded expense, and refuses to save while payerNeedsReselection is set (a payer who has since
+  left). Saving PATCHes only payer/split through updateSharedExpenseAttribution.
+
+Key Decisions:
+  A null guard `if (expense === null) return null;` was added before the ready render. The plan's
+  prose conditions the ready branch on `loadState === "ready" && expense !== null`, but its code block
+  had no such guard and TypeScript cannot narrow `expense` from the loadState discriminant, so the
+  literal code produced 10 TS18047 errors. The guard expresses the stated condition and the return
+  type was already `JSX.Element | null`; the gate confirmed it is behaviour-preserving.
+  The reselection error string ships with a hyphen, not the plan's em dash, per this repo's
+  no-em-dash UI copy rule; REFERENCE.md records the shipped string.
+  REFERENCE.md got three changes in one diff (controller-owned): the new SharedExpenseDetail line, plus
+  a sweep of the two now-stale "not yet mounted" clauses on the SharedExpenseForm and AttributionFields
+  entries — Task 8 mounted SharedExpenseForm at a real route, which falsified both. The sweep was
+  deferred from Task 8's cycle into this diff specifically so it would be reviewed; the gate confirmed
+  all three parts are accurate at this commit.
+
+Deviations:
+  The null guard and the hyphen, both above. No file beyond the component and REFERENCE.md changed
+  (app/expenses/[id]/page.tsx and components/AttributionFields.tsx provably untouched).
+
+Files Changed:
+  - components/SharedExpenseDetail.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output (after the null guard; the unguarded literal code produced 10
+    TS18047 errors, which is why the guard is required)
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  The gate re-ran both independently.
+
+Review Gate — Combined: PASS (attempt 1)
+
+  Non-blocking findings carried forward, all plan-verbatim behaviour:
+  1. handleSplitMethodChange clears exactAmounts whenever the method becomes "exact". This screen
+     OPENS in "exact" with amounts seeded from the saved split, so an Even -> Exact toggle wipes the
+     loaded values and a subsequent Save fails with "Enter an amount for every selected participant."
+     In the record form the clear guards against stale values from a previous selection; here it
+     discards the only correct values. Tightening would mean dropping the conditional clear in this
+     file and re-seeding on open.
+  2. Filtering departed members out of loadedSelected/loadedAmounts is right for selectability
+     (AC-020-15) but silently breaks the cent sum, so a saved expense whose split included a departed
+     member fails Save with the generic "The amounts must add up to the total." The payer case gets a
+     dedicated explanation; the split case gets none.
+  3. Seeding exactAmounts with s.amount.toFixed(2) and re-parsing can disagree with the server's cent
+     comparison if a share was originally entered with more than two decimals (validateExactSplit only
+     compares cent sums, so 3.334 + 3.336 + 3.33 is accepted at record time). An untouched
+     edit-screen save would then 400 and surface the misleading network-error copy. String(s.amount)
+     would remove it. Same root cause as the sub-cent findings logged under Tasks 3, 4 and 5.
+=====================================================================
+=====================================================================
+Task 10: [Route] — app/trips/[token]/expenses/[expenseId]/page.tsx
+Completed: 2026-09-18
+Commit: 9089e50
+
+Summary:
+  Created the single-expense detail route: an 11-line 'use client' page that unwraps { token,
+  expenseId } via React's use(props.params) and renders components/SharedExpenseDetail.tsx. Like its
+  shared-trip siblings it reads no trip-gate store and does not redirect, so a participant whose
+  device has no local solo trip can still reach the screen; the component's own stray-visitor guard
+  supplies AC-020-16's expense-detail half.
+
+Key Decisions:
+  The file is byte-for-byte the plan's code block, with no return-type annotation and no `type JSX`
+  import, matching all four route siblings (that convention belongs to components/). The gate
+  confirmed the plan's prose `: JSX.Element` descriptor is overridden by the plan's own code block and
+  by the repo's route convention.
+  REFERENCE.md got two changes in one diff (controller-owned): the new route line, and the
+  SharedExpenseDetail entry's tail changed from "not yet mounted — (Task 10) is its entry point" to
+  "mounted at /trips/[token]/expenses/[expenseId]".
+
+Deviations:
+  None from the implementer. The controller additionally removed a task-number forward reference from
+  the AttributionFields entry after the gate flagged it as newly stale ("whose own route lands in Task
+  10"): the clause now simply names both mounting components and their routes, with no task numbers,
+  so it cannot go stale again. That correction is doc-only and will be visible to Task 11's gate,
+  which reviews REFERENCE.md as part of its own diff.
+
+Files Changed:
+  - app/trips/[token]/expenses/[expenseId]/page.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build -> exit 0, "Compiled successfully", route table includes
+    /trips/[token]/expenses/[expenseId]
+  npx tsc --noEmit -> exit 0, no output (no TS2344; the build ran first)
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  The gate re-ran all three independently.
+
+Review Gate — Combined: PASS (attempt 1)
+  One non-blocking finding: REFERENCE.md's AttributionFields entry was left stale by this commit
+  ("whose own route lands in Task 10"). Fixed as described above. No code-quality issues were found:
+  no dead code, no duplicated role logic, and the file is behaviourally identical to its siblings.
+=====================================================================
+=====================================================================
+Task 11: [Route] — app/expenses/new/page.tsx redirects a shared trip's creator
+Completed: 2026-09-18
+Commit: bf9e6cd
+
+Summary:
+  app/expenses/new/page.tsx now imports getSharedTripLink alongside getTrip; its effect gains an
+  early return after the no-trip redirect and then replaces to /trips/{shareToken}/expenses/new when
+  a share link exists, and a matching render guard returns null for that pass so ExpenseForm cannot
+  flash before the redirect lands. A device with no share link mounts ExpenseForm exactly as before.
+
+Key Decisions:
+  The change is the plan's literal code blocks, unmodified, mirroring app/page.tsx's existing
+  getJoinedTrips() redirect-plus-guard shape. The controller additionally rewrote two REFERENCE.md §4
+  lines in the same diff (controller-owned): the expenses/new/page.tsx line now describes the
+  redirect, and the shared record route's line dropped its now-stale "not yet linked to from
+  anywhere" clause, which this very change falsified.
+
+Deviations:
+  None from the implementer. One doc-only correction by the controller, above.
+
+Files Changed:
+  - app/expenses/new/page.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  npx playwright test e2e/019-manage-trip-participants.spec.ts -> exit 0, "10 passed" (count unchanged)
+  The gate re-ran tsc, lint and the Playwright spec independently and reproduced all three. It also
+  swept the existing specs for any other /expenses/new coverage and found that only 009 (a locator
+  exclusion) and 018 (which seeds a trip and joinedTrips but no shared-trip-link) go near it, so
+  nothing existing combines a seeded share link with /expenses/new and no cross-feature regression is
+  left uncovered.
+
+Review Gate — Combined: PASS (attempt 1); PASS (attempt 2, after the doc fix)
+  The first PASS carried one non-blocking finding: the shared record route's REFERENCE.md clause was
+  made stale by this change. The controller applied the reviewer's prescribed rewording and the
+  re-review confirmed both edited lines are accurate at this commit, with the code unchanged.
+  Non-blocking observations not acted on:
+  1. getSharedTripLink() is read twice per pass when a link exists (two localStorage reads plus two
+     isStorageAvailable probes). This deliberately mirrors app/page.tsx's existing getJoinedTrips()
+     guard, so it is precedent-consistent; hoisting would deviate from the plan's literal block.
+  2. A device holding a stale share link is redirected into the shared flow, where SharedExpenseForm
+     resolves the role and either loads or redirects home; a deleted server trip surfaces as a
+     role="alert" rather than a bounce loop. Verified safe.
+=====================================================================
+=====================================================================
+Task 12: [UI] — components/JoinedTripSummary.tsx gains an "Add expense" link
+Completed: 2026-09-18
+Commit: f3ba461
+
+Summary:
+  Added one additive link to components/JoinedTripSummary.tsx pointing at
+  /trips/{shareToken}/expenses/new, directly after the existing "View participants" link inside the
+  same outer container. The component diff is 6 insertions and 0 deletions, which is the mechanical
+  proof that nothing existing changed or moved.
+
+Key Decisions:
+  The implementer confirmed the "View participants" block matched the plan's quote character-for-
+  character before inserting, and reused the existing next/link import rather than adding a second.
+  REFERENCE.md's JoinedTripSummary entry was updated in the same diff (controller-owned).
+
+Deviations:
+  None.
+
+Files Changed:
+  - components/JoinedTripSummary.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  npx playwright test e2e/017-join-a-shared-trip-via-link.spec.ts -> exit 0, "17 passed"
+  npx playwright test e2e/018-switch-between-multiple-trips.spec.ts -> exit 0, "14 passed"
+  npx playwright test e2e/019-manage-trip-participants.spec.ts -> exit 0, "10 passed"
+  All three counts are unchanged from the plan's frozen baselines, and the gate reproduced every one.
+
+Review Gate — Combined: PASS (attempt 1)
+  Blocking issues: none. The gate also read all three spec files and confirmed no existing assertion
+  uses a link inventory or a strict locator the new link could break, and that e2e/009's
+  `a[href^="/expenses/"]` selector cannot match the new /trips/... href.
+
+  ACTIONABLE FINDING CARRIED FORWARD TO TASK 13 (non-blocking here, but it WILL break a naive spec):
+  BottomNav renders a link labelled "Add Expense" (capital E) at /expenses/new on every route, and
+  this new link is labelled "Add expense" (lowercase e). Playwright's getByRole("link", { name }) is
+  case-insensitive and substring-matching by default, so `page.getByRole("link", { name: "Add
+  expense" })` resolves to TWO elements on the joined-summary screen and throws a strict-mode
+  violation. Task 13 must either pass `exact: true` (which is case-sensitive and excludes "Add
+  Expense") or scope the query to the summary container. The label itself is mandated by the plan, so
+  the fix belongs in the consumer.
+
+  Other non-blocking observations:
+  1. No e2e spec exercises the new link, and spec.md §4 has no E2E row for TS-020-12. The sibling
+     "View participants" link from 019 is likewise never clicked, and this task's test list is
+     regression-only by design, so this is a scoped decision rather than an oversight. A one-test
+     click-through in Task 13 using the exact-match trick above would close it.
+  2. REFERENCE.md's JoinTrip.tsx line still enumerates only a "Back to home" link and omits the 019
+     and 020 links; the authoritative per-component line (JoinedTripSummary.tsx) is correct. The
+     omission predates this task and is left alone.
+  3. spec.md §1.6 and Challenge #3 still call the two expense routes "reachable only by direct URL",
+     which this link contradicts. Spec-text inconsistency predating this implementation; not a code
+     deviation.
+=====================================================================
+=====================================================================
+Task 14: [Config] — snapshot columns on Expense and ExpenseShare (amendment)
+Completed: 2026-09-18
+Commit: 3bfae17
+
+Summary:
+  Added nullable payerParticipantIdSnapshot to Expense and participantIdSnapshot to ExpenseShare,
+  immediately after their FKs, and applied migration 20260918160954_add_participant_id_snapshots with
+  a backfill of both snapshots from their FKs. Neither relation nor its onDelete: SetNull was touched,
+  so 019's hard participant delete still works and referential integrity is unchanged.
+
+Key Decisions:
+  This is the first of three amendment tasks (14-16) added to the plan after Task 13's E2E-020-17
+  exposed a contradiction between Task 2 (SetNull) and Task 9 (a "the payer has left" guard). The
+  user chose to preserve the departed id, so the columns are additive snapshots rather than a change
+  to the FKs: the FKs stay the live link the routes validate against, and the snapshots become what
+  the API returns (Task 15), which is what makes the client guard reachable with no client change.
+  The migration's backfill had to be applied out of band. The plan's suggested invocation
+  `prisma db execute --file <file> --schema <schema>` is impossible in Prisma 7.10.0 (--schema was
+  removed), and dropping --schema makes the whole file fail on the already-applied ALTERs, which
+  Postgres rolls back as one implicit batch, so the UPDATEs never ran that way. Both UPDATEs were
+  therefore executed alone through `prisma db execute --stdin` (exit 0, "Script executed
+  successfully") while remaining in the recorded migration file for a fresh-database replay. Both
+  gates independently confirmed the backfill really landed by querying the live database read-only
+  (Expense and ExpenseShare each show 0 rows where the snapshot differs from a non-null FK).
+  REFERENCE.md §4 was updated in the same diff (controller-owned): the schema description now lists
+  both columns and their rationale, and the migration list names the new migration and its backfill.
+
+Deviations:
+  The two `db execute` deviations above. No file beyond the schema, the migration and REFERENCE.md
+  changed.
+
+Files Changed:
+  - prisma/schema.prisma (modified)
+  - prisma/migrations/20260918160954_add_participant_id_snapshots/migration.sql (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx prisma generate -> exit 0, "Generated Prisma Client (v7.10.0)"
+  npx prisma migrate dev --name add_participant_id_snapshots -> exit 0, migration created and applied
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  npx prisma migrate status -> exit 0, "5 migrations found", "Database schema is up to date!"
+  Live-DB read-only checks by both gates: both columns exist as nullable text; all four FKs still
+    CASCADE (tripId/expenseId) and SET NULL (payerParticipantId/participantId); all 5 _prisma_migrations
+    rows finished; 0 rows in either table where a non-null FK's snapshot is missing.
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+
+  WATCH ITEM 1 — stale migration checksum (deliberately NOT fixed; needs a user decision):
+  the migration file carries a checksum recorded at apply time that no longer matches its contents,
+  because the plan's own Step 2 order is "apply, then append the backfill". Both gates verified all
+  four earlier migrations' checksums match, and that `migrate status` and `migrate deploy` still exit
+  0 (deploy reports "No pending migrations to apply"). The consequence is deferred: a future
+  `prisma migrate dev` (the workflow REFERENCE.md names for schema changes, used by the next feature
+  that alters the schema) may report a modified applied migration and prompt to reset the dev
+  database. The clean fix is `npx prisma migrate reset` followed by `npx prisma migrate deploy`,
+  which wipes the dev database — it holds only E2E test data, but wiping a database is not a
+  decision to take unilaterally, so it is reported to the user instead.
+
+  WATCH ITEM 2 — bounded residual for six pre-existing rows:
+  the backfill can only copy FKs that still exist. Six Expense rows and six ExpenseShare rows in the
+  dev database have a NULL FK with a non-creator payerName (a payer deleted before the migration), so
+  their snapshot is NULL too and they will still look creator-paid to the client after Task 15. Not
+  repairable from surviving data, since SetNull destroyed the id. Task 16's spec builds its own
+  fixtures, so this is only a note that the E2E suite must not treat those rows as a new bug.
+
+  Non-blocking findings not acted on:
+  1. The new fields are the longest in their models, so prisma/schema.prisma's column alignment is no
+     longer canonical (`prisma format` would fix it). Left alone because HEAD was already
+     format-dirty — running the formatter also realigns Trip/Participant and moves @@index lines,
+     which would violate this task's "change nothing else" instruction.
+  2. REFERENCE.md's new sentence about the snapshots being what the API returns is written in the
+     present tense but describes post-Task-15 behaviour. Deferred to the Task 15 diff, where the
+     claim becomes true (or the wording changes).
+=====================================================================
+=====================================================================
+Task 15: [Route] — both expense routes write and return the snapshots (amendment)
+Completed: 2026-09-18
+Commit: b7788e2
+
+Summary:
+  POST now writes payerParticipantIdSnapshot and each share's participantIdSnapshot on create and
+  returns those columns in its 201 body; the [expenseId] route's serialize helper reads both snapshot
+  columns (so GET and PATCH both return them) and PATCH writes them alongside the FKs inside its
+  transaction. Every other behaviour in both handlers is byte-identical.
+
+Key Decisions:
+  Deviation from the plan's literal text: the plan wrote `payerParticipantIdSnapshot:
+  body.payerParticipantId`, which does not typecheck because `body` is `Record<string, unknown>` and
+  each file resolves it first into a `const payerParticipantId = body.payerParticipantId as string |
+  null;` local. Both routes therefore write `payerParticipantIdSnapshot: payerParticipantId`, so the
+  FK and its snapshot always come from the same expression and cannot diverge. Both gates confirmed
+  the value and behaviour are what the plan intended.
+  The gate verified the change does resolve the ambiguity it exists for: null now means only "the trip
+  creator paid", while a departed payer keeps a real cuid in the response, so
+  SharedExpenseDetail.tsx's guard becomes reachable. It also noted this additionally fixes a latent
+  duplicate React key in the share list, where a departed share and the creator's share previously
+  both keyed on "creator".
+  REFERENCE.md's two route descriptions were updated in the same diff (controller-owned), and the
+  schema clause that claimed the snapshots are what the API returns — aspirational when Task 14 wrote
+  it — is now literally true.
+  The controller deleted three stray untracked evidence files the implementer left at the repo root
+  (build-out.txt, lint-out.txt, tsc-out.txt) so they could not be swept into the commit, and re-ran
+  the migration's two idempotent backfill UPDATEs against the dev database to close the gate's
+  finding #1.
+
+Deviations:
+  The one typed deviation above.
+
+Files Changed:
+  - app/api/trips/[id]/expenses/route.ts (modified)
+  - app/api/trips/[id]/expenses/[expenseId]/route.ts (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build -> exit 0, "Compiled successfully", route table includes both expense routes
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  Both gates re-ran all three independently.
+  npx prisma db execute --stdin (the two backfill UPDATEs) -> "Script executed successfully"
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1); a first dispatch of this gate returned no response
+  (transient), so it was re-dispatched and passed.
+  The quality gate enumerated the diff's 11 hunks and confirmed each maps to a declared change; no
+  write path forgets a column, no read path returns an FK, and neither route mixes the two column
+  families up.
+  Non-blocking findings carried forward:
+  1. Rows created through the POST route in the window between Task 14's migration and this commit
+     have a NULL snapshot while the FK is set, so serialize would report such a payer as the trip
+     creator. Closed by the controller re-running the backfill UPDATEs; going forward the write path
+     is correct, and the exposure was limited to rows touched in that window.
+  2. serialize's hand-written parameter type still declares payerParticipantId and
+     shares[].participantId, which it no longer reads. Harmless under structural typing, but it
+     slightly obscures that the FK is never read. Left as written: changing it is outside this task.
+  3. The POST route re-implements the response mapping that serialize performs in the sibling route,
+     so the snapshot sourcing exists in two copies. Both were updated consistently here; noted only
+     because drift between them is the failure mode a future amendment would hit.
+=====================================================================
+=====================================================================
+Task 16: [Behavioral] — Playwright coverage for the full feature (retry)
+Completed: 2026-09-18
+Commit: 088fb2b
+
+Summary:
+  e2e/020-attribute-an-expense-to-payer-and-split.spec.ts — 17 scenarios, all passing, covering the
+  sixteen acceptance criteria in spec.md §4 (E2E-020-01..16) plus E2E-020-17, the plan's regression
+  test for the departed-payer guard. With Tasks 14-15 in place the guard scenario passes exactly as it
+  was written for the first attempt: it clicks "Save split" with the payer select untouched, asserts
+  the "Choose who paid" alert, asserts no PATCH was sent, then picks a payer and confirms the save
+  persists after a reload. No assertion was weakened, skipped or deleted.
+
+Key Decisions:
+  The spec was not rewritten: the first attempt's file was already correct and already covered all 17
+  scenarios, so this task's work was re-running it against the fixed product. Final spec is 782 lines.
+  Every test mints its own trip, link and participants through the real API, so the shared dev database
+  accumulates inert rows but no test depends on another's state or on execution order.
+
+Files Changed:
+  - e2e/020-attribute-an-expense-to-payer-and-split.spec.ts (created)
+
+Verification:
+  npx playwright test e2e/020-attribute-an-expense-to-payer-and-split.spec.ts -> exit 0, "17 passed"
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's two banner lines
+  npm run build -> exit 0, "Compiled successfully", route table includes all four 020 routes
+  Both gates re-ran the suite independently: one got 17 passed, the other got 17 passed on a warm
+  re-run after one cold-start flake (see below).
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1); one dispatch returned no verdict and was re-dispatched.
+  The spec gate checked each of the 17 tests against its spec.md §4 row and confirmed none would pass
+  against a broken implementation — notably E2E-020-04 (shares sum to exactly 10, not merely "three
+  rows shown"), E2E-020-05/06 (the exact error string, which only the client validator can produce,
+  plus an unchanged URL), E2E-020-11 (no Payer field and no "Split among" on a solo trip, after
+  waiting for the form), and E2E-020-16 (a full-string URL match that cannot also match another path).
+  No alert assertion anywhere is page-scoped, so nothing collides with Next's route announcer.
+  The quality gate found no defect in the spec's logic, selectors, seeding discipline, state isolation
+  or route scoping, and confirmed every test seeds before page.goto, that both page.route
+  interceptions are per-page and cannot leak, and that no assertion is unfalsifiable.
+
+  Non-blocking findings carried forward:
+  1. One cold-start flake observed by the quality gate: an "exact split saves each entered share" run
+     timed out at the post-save URL assertion because the POST itself failed with the app's own
+     "Could not reach the server" alert — a dev-server/Neon cold-start hiccup, not a spec race. It did
+     not reproduce on two re-runs. Undiagnosable because playwright.config.ts's webServer discards the
+     server's stdout, so the route's console.error never surfaces; adding stdout: "pipe" would fix that.
+  2. test.describe.configure({ mode: "serial", timeout: 120_000 }) was added by the first attempt. The
+     quality gate measured its cost: a single failure suppresses the remaining scenarios ("1 failed /
+     14 did not run"), and the suite takes ~2.2m versus 28.7s unserialised. It cannot cause a false
+     pass, and the explicit per-screen waits are what actually handle the cold-compile race, so serial
+     mode is not load-bearing — noted as a candidate for removal.
+  3. waitForApiIdle silently degrades to a no-op if the request tracker was never installed
+     (`if (tracker === undefined) return;`), so its anti-race guarantee could vanish unobserved.
+  4. rows.locator("span:last-child") in the rounding test is the file's only structural CSS selector.
+  5. The two "server unreachable" tests exercise only the thrown-fetch branch via route.abort(); the
+     non-2xx (!response.ok) branch of lib/sharedExpenses.ts is uncovered. One route.fulfill({ status:
+     500 }) case would close it.
+  6. Two titles say "SGD" while the fixture currency is JPY (the Gherkin wording says SGD); assertions
+     are currency-agnostic, so this is cosmetic.
+
+  Housekeeping: the controller deleted two stray untracked files left by subagents at the repo root
+  (run1.log, plus build-out.txt/lint-out.txt/tsc-out.txt during Task 15) so they could not be swept
+  into a commit.
+=====================================================================

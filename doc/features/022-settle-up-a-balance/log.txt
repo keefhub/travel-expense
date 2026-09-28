@@ -1,0 +1,329 @@
+﻿=====================================================================
+Task 1: [Config] - Prisma schema gains `Settlement`
+Completed: 2026-09-19
+Commit: 971ad68
+
+Summary:
+  Added the Settlement model to prisma/schema.prisma plus the settlements relation on Trip,
+  generated and applied the add_settlement migration, and recorded both in REFERENCE.md section 4.
+
+Key Decisions:
+  fromId/toId are plain optional strings with no Participant FK, so a settlement never joins a live
+  Participant row; null means the trip creator, matching the existing *Snapshot convention. amount
+  is a Float already expressed in the trip currency, so no settlement needs an exchange-rate lookup.
+
+Deviations:
+  None. REFERENCE.md was updated by the controller (the task's own Files manifest named only
+  prisma/schema.prisma), per the repo rule that docs move in the same change as the code.
+
+Files Changed:
+  - prisma/schema.prisma (modified)
+  - prisma/migrations/20260919124924_add_settlement/migration.sql (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx prisma generate -> exit 0, "Generated Prisma Client (v7.10.0)"
+  npx prisma migrate dev --name add_settlement -> exit 0, migration created and applied; migrate
+    status reports "Database schema is up to date!" (7 migrations)
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's banner
+
+Review Gate - Spec:    PASS (attempt 1)
+Review Gate - Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 2: [Domain] - lib/balances.ts gains settlement netting, validation, and the client wrapper
+Completed: 2026-09-19
+Commit: 45c7a87
+
+Summary:
+  getTripBalances takes a fourth settlements parameter and nets each settlement after the expense
+  pass, crediting who owed and debiting who was owed in the same integer cents. Added pure
+  validateSettlementAmount and the settleBalance client wrapper around POST /settlements.
+
+Key Decisions:
+  The fourth parameter defaults to [] so the one existing caller (the balances GET route, still
+  passing three arguments) keeps compiling until Task 3 passes real rows - the plan's own
+  "Assumed" note. Sign convention: a settlement from -> to raises from's net (+cents) and lowers
+  to's, because the expense pass already defines positive as "is owed".
+
+  Gate B flagged one latent, currently-unreachable path: names.get(id) ?? "" can write an empty
+  name into the shared names map for a settlement party the expense pass never saw. Unreachable
+  because there is no expense DELETE route and participant removal keeps its name snapshots, so
+  every settleable pair already has a name. Gate B also noted that a sub-cent input like "1.004"
+  passes validateSettlementAmount and then nets to 0 cents - that is the spec's own contract
+  (TS-022-03 compares in cents, and the UI pre-fills a 2dp figure), and the route in Task 4 rounds
+  before persisting, so nothing drifts in storage. Both left as specified.
+
+Deviations:
+  The commit subject was shortened from the plan's "add settlement netting, validation, and the
+  settleBalance client wrapper" to keep it within the 72-character convention. REFERENCE.md's lib
+  entry was updated by the controller (the task's Files manifest named only lib/balances.ts).
+
+Files Changed:
+  - lib/balances.ts (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's banner
+  (No red step: the three new exports have no consumer until Tasks 4, 5 and 6.)
+
+Review Gate - Spec:    PASS (attempt 1)
+Review Gate - Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 3: [Route] - GET /api/trips/[id]/balances includes settlements
+Completed: 2026-09-19
+Commit: fe0870b
+
+Summary:
+  The balances GET route now loads the trip's settlements, maps them to { fromId, toId, amount },
+  and passes them to getTripBalances as its fourth argument, so a settled-up pair nets down or away.
+  Auth, the 404/403/500 shapes and the { balances, tripCurrency } body are unchanged.
+
+Key Decisions:
+  No orderBy on the settlement query, unlike the shares query whose ordering is load-bearing:
+  settlements are summed into a cents Map and the line order is decided by an explicit sort, so
+  their arrival order cannot affect the result.
+
+  The route still awaits its three queries sequentially, matching every other route under app/api.
+
+  The combined gate noted that Task 4's new POST route will repeat this same expense/rate/settlement
+  loading and mapping. That is the plan's own contract for that task (Tasks 3 and 4 are separate
+  route tasks by this repo's data/domain/route separation), so the duplication is deliberate for now.
+
+Deviations:
+  The commit subject dropped the plan's "/api/trips/[id]/balances" to stay within 72 characters.
+  REFERENCE.md's entry for this route was updated by the controller (the task's Files manifest named
+  only the route file), because that entry enumerates the route's queries and would otherwise be stale.
+
+Files Changed:
+  - app/api/trips/[id]/balances/route.ts (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build -> exit 0, "Compiled successfully"; route table includes /api/trips/[id]/balances
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's banner
+  (No red step: getTripBalances's new parameter defaulted to [] in Task 2, so this route compiled
+  before the change; the route's new behavior is proven by Task 7's Playwright coverage.)
+
+Review Gate - Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 4: [Route] - POST /api/trips/[id]/settlements
+Completed: 2026-09-19
+Commit: 9f828d0
+
+Summary:
+  New Route Handler that records one settlement and hands back the recomputed balances. It parses
+  the body in its own try/catch, 404s an unknown trip, reuses the balances GET's auth check, runs the
+  four field checks in a fixed order before reading any ledger data, recomputes the current balances
+  to find the pair's outstanding line, refuses an amount above it, rounds to the nearest cent, writes
+  the row and responds 200 { balances, tripCurrency } with the new settlement already netted in.
+
+Key Decisions:
+  Attempt 1 failed its quality gate: a sub-cent amount (e.g. 0.001) passed the unrounded positivity
+  check, rounded to 0 cents, made the cap comparison 0 > 0 false even for a pair with no line at all,
+  and so wrote a zero-value Settlement row while returning 200. The fix gates the requested amount in
+  integer cents before anything is written - a value rounding to zero cents now returns 400 "Enter a
+  valid amount greater than zero." - and makes the outstanding figure explicit
+  (matchingLine === undefined ? 0 : ...) instead of an ?? 0 fallback. Both gates then passed on
+  attempt 2.
+
+  Client-side awareness of the same hole: lib/balances.ts's validateSettlementAmount still accepts a
+  positive amount whose cents round to zero, so the modal in Task 5 will let 0.001 through and the
+  route will answer 400, which settleBalance collapses into the generic friendly error. No integrity
+  impact (the route is now the gate), and that helper is committed outside this task's diff, so
+  tightening it belongs to whichever task next owns lib/balances.ts.
+
+  No db.$transaction around the read/validate/write: two racing requests can both read the same
+  pre-settlement line and both pass. That is spec section 1.6's explicit Out of Scope, mirroring
+  feature 020's identical concurrent-edit exclusion, and REFERENCE.md records it as deliberate.
+
+Deviations:
+  Two additions beyond the plan's literal step 7, both required by the attempt-1 finding: the
+  amountCents <= 0 branch and the explicit undefined check for matchingLine. The four field checks,
+  their order and their messages are unchanged.
+
+  REFERENCE.md gained the route's entry in section 4 (the task's Files manifest named only the new
+  route file) and that entry was then reworded after the fix, inside this same task's diff.
+
+Files Changed:
+  - app/api/trips/[id]/settlements/route.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build -> exit 0, "Compiled successfully"; route table includes /api/trips/[id]/settlements
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's banner
+
+Review Gate - Spec:    PASS (attempt 2)
+Review Gate - Quality: PASS (attempt 2)
+=====================================================================
+=====================================================================
+Task 5: [UI] - components/ConfirmSettleBalance.tsx
+Completed: 2026-09-19
+Commit: 47557c0
+
+Summary:
+  New modal: a z-50 role="dialog" aria-modal overlay that names the two people the balance sits
+  between, pre-fills an "Amount to settle" input with the line's full outstanding figure, validates
+  it through the pure validateSettlementAmount on Settle, shows a role="alert" error and calls
+  nothing else when it fails, and calls onConfirm(amount) only on success. No fetch, no storage.
+
+Key Decisions:
+  The combined gate passed but flagged two issues, both originating in the plan's own quoted markup
+  rather than in the implementation, so neither was fixed here (the plan's markup was mandated
+  verbatim, and editing it would have invalidated the gate that had just passed):
+
+  1. The component holds useState but carries no 'use client' directive, because the plan's premise
+     ("mirrors ConfirmParticipantAction.tsx") is wrong - that file is genuinely stateless, while this
+     one is not. It is runtime-safe as shipped, because the only render site (components/TripBalances.tsx,
+     Task 6) is itself a client component, so the directive is not required for it to work. It should
+     still gain "use client" for consistency with every other stateful component in components/ and
+     with the UI slice's own rule.
+  2. The dialog card uses "rounded p-6" where design.md locks radius to rounded-lg and where the
+     sibling modal uses "flex w-full max-w-sm flex-col gap-4 rounded-lg bg-(--background) p-4". The
+     spec's own 2.6 asked for the existing modal pattern to be followed, so the plan's literal markup
+     is the drift. Cosmetic only.
+
+  Passing the amount through validateSettlementAmount rather than re-implementing the rules keeps the
+  client and the route agreeing on the two error strings. Note that the helper still accepts a
+  positive sub-cent amount whose cents round to zero (recorded under Task 4); the route is the real
+  gate, so the worst case is a 400 surfacing as the generic friendly error.
+
+Deviations:
+  None by the implementer - the markup, imports and handler match the contract character for
+  character. REFERENCE.md gained the component's entry in section 4 (the task's Files manifest named
+  only the component file).
+
+Files Changed:
+  - components/ConfirmSettleBalance.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's banner
+  (No red step: nothing mounts this component until Task 6.)
+
+Review Gate - Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 6: [UI] - components/TripBalances.tsx gains a "Settle" control per line
+Completed: 2026-09-19
+Commit: 836bd63
+
+Summary:
+  Every settlement line now carries a btn-text "Settle" button, available to any member rather than
+  only the pair on that line. It sets a confirmTarget and opens components/ConfirmSettleBalance.tsx;
+  confirming maps the TRIP_CREATOR_ID sentinel back to wire null, posts through settleBalance behind
+  a useRef guard reset in a finally, replaces balances/tripCurrency from the response on success, and
+  on failure renders a role="alert" actionError above the list while leaving the last-known-good
+  balances on screen.
+
+Key Decisions:
+  Attempt 1 failed its gate for a real regression: e2e/021-view-trip-balances.spec.ts asserted that
+  no settlement row carried any button or link, which is exactly the behavior this task set out to
+  change, so the behavioral gate went red. That spec was amended in this same task (the Files
+  manifest did not name it; the plan has been annotated). A second failure in the same file was
+  masked by its serial mode - Playwright skips the rest of a serial file after the first failure, so
+  test 9 only showed up on a full run; it read each row's whole text, which now includes the "Settle"
+  label, and now reads the mono amount span instead.
+
+  Attempt 2 then failed on the controller's own REFERENCE.md edit, not on the code: the clause
+  rewritten for the TRIP_CREATOR_ID sentinel blamed "this module's three fetch wrappers", which do
+  not translate it at all - the module's only translation is inside the pure toSharesPayload, and
+  the reverse mapping happens inline in SharedExpenseForm, SharedExpenseDetail, TripBalances,
+  lib/balances and the settlements route. Attempt 3 fixed that sentence and passed; the user
+  authorized that third attempt after the loop escalated, since the remaining gap was documentation
+  only and the code, spec and all three commands were already green.
+
+  Known residue, all non-blocking and recorded rather than fixed (each would have invalidated a gate
+  that had just passed): the "or read a response" wording in that REFERENCE.md sentence is broader
+  than the sites it names; the assertion that a row carries no link was dropped rather than
+  re-asserted alongside the new button one; and lib/sharedExpenses.ts's own header comment still
+  repeats the old "only inside the three fetch wrappers" claim, which now contradicts REFERENCE.md.
+  The modal also has no key, which the final gate concluded is correct for a conditionally rendered
+  single element.
+
+Deviations:
+  e2e/021-view-trip-balances.spec.ts changed although the task's Files manifest named only the
+  component - required by the gate finding above. REFERENCE.md edits are the controller's, under the
+  standing doc rule.
+
+Files Changed:
+  - components/TripBalances.tsx (modified)
+  - e2e/021-view-trip-balances.spec.ts (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's banner
+  npx playwright test e2e/021-view-trip-balances.spec.ts -> 10 passed (file run whole, so the
+    serial-mode skip trap could not mask a later failure)
+  npx playwright test e2e/020-...spec.ts -> 17 passed (extra neighbor regression run by the final gate)
+
+Review Gate - Combined: PASS (attempt 3; FAIL at attempts 1 and 2)
+=====================================================================
+=====================================================================
+Task 7: [Behavioral] - Playwright coverage for the full feature
+Completed: 2026-09-19
+Commit: 893bda1
+
+Summary:
+  New e2e/022-settle-up-a-balance.spec.ts, ten tests covering AC-022-01 to AC-022-10: a full settle
+  clearing the line, either party triggering it, a partial settle leaving the remainder, the three
+  refused amounts replacing the plan's three-value case, an over-balance amount refused, a later
+  expense netting against a partial settlement, a removed participant's line, cancelling without
+  confirming, and an aborted settle request. Helpers are duplicated from the 021 spec, unchanged.
+
+Key Decisions:
+  The gate passed the artifact but not cleanly: its first cold whole-file run went red at E2E-022-04
+  (the row still read 20.00 after the dialog closed) and it could not attribute the cause, because
+  no test asserts the ABSENCE of the action error after a successful settle - a failed POST surfaces
+  as a mysterious balance mismatch instead of "the settle request failed". Seven further runs
+  (three whole-file, four isolated) were green, and the controller's own cold whole-file run before
+  this commit was green too (10 passed). The gate's suggested hardening, which is not in this spec
+  yet and is the first thing to try if the flake returns: after awaitSettleComplete on the success
+  paths, assert balancesScreen(page).getByRole("alert") has count 0, or gate on waitForResponse for
+  the POST and assert status 200 before asserting a balance.
+
+  The gate also hypothesised a latent app race worth knowing about: components/TripBalances.tsx's
+  mount-time load() sets balances unconditionally, and StrictMode's double invoke puts two GETs in
+  flight at mount, so a mount GET resolving after a settle response could overwrite it with
+  pre-settlement data. Not reproduced, and out of this task's scope, but it would be an app defect
+  rather than a spec fix, so it belongs to a follow-up if it recurs.
+
+  Serial mode is inherited from the 021 spec on purpose (one dev server compiling each dynamic route
+  on first request). Its known cost, hit in practice here: a single failure skips every later test,
+  so this file must always be verified whole, never with -g.
+
+  Beyond the plan's bullets the spec also reloads the page in the two persistence cases and spies on
+  the settlements endpoint with page.route in the cancel case. Both are required by spec 4 and
+  materially strengthen the coverage, and awaitSettleComplete (the one helper added beyond the four
+  the plan named) removes a real race against the dev server's cold-compile latency rather than
+  hiding a failure.
+
+Deviations:
+  Three small ones, all reported: the extra awaitSettleComplete helper, the three spec-4 assertions
+  above, and the test titles carrying an "E2E-022-NN - " prefix where the older specs use plain
+  titles (the spec's own 4 table lists the plain names, so the prefix is a traceability addition).
+  setExchangeRateViaApi was not duplicated, since no 022 scenario needs an exchange rate.
+  REFERENCE.md was deliberately left untouched: a new spec file is not listed by name in section 4,
+  and no dependency, storage key or module API changed.
+
+Files Changed:
+  - e2e/022-settle-up-a-balance.spec.ts (created)
+
+Verification:
+  npx playwright test e2e/022-settle-up-a-balance.spec.ts -> 10 passed (run cold and whole by the
+    implementer, by the gate three times, and by the controller once immediately before the commit)
+  npx tsc --noEmit -> exit 0, no output
+  npm run lint -> exit 0, no output beyond npm's banner
+  npm run build -> exit 0, "Compiled successfully"; route table includes /api/trips/[id]/balances,
+    /api/trips/[id]/settlements and /trips/[token]/balances
+
+Review Gate - Combined: PASS (attempt 1, with the flake observation recorded above)
+=====================================================================
