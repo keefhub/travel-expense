@@ -344,9 +344,13 @@ instead of throwing.
 Full rules live in [CLAUDE.md](CLAUDE.md) — this is a summary, not a replacement.
 
 - Build order is **not** file order. It is: 012 → 004 → 010 → 015 → 001 → 002 → 003 → 005 → 006 →
-  011 → 007 → 008 → 009 → 013 → 014 → 016 → 017 → 018 → 019 → 020 → 021 → 022. See the table in
-  CLAUDE.md for why. 016 begins the v2 shared-trip initiative (see [doc/requirements/2026-09-13-shared-trip-expense-tracking.md](doc/requirements/2026-09-13-shared-trip-expense-tracking.md)),
-  and 022 completes it — all seven v2 slices (016–022) are now authored.
+  011 → 007 → 008 → 009 → 013 → 014 → 016 → 017 → 018 → 019 → 020 → 021 → 022 → 023 → 024 → 025 →
+  026 → 027 → 028 → 029 → 030 → 031. See the table in CLAUDE.md for why. 016 begins the v2
+  shared-trip initiative (see [doc/requirements/2026-09-13-shared-trip-expense-tracking.md](doc/requirements/2026-09-13-shared-trip-expense-tracking.md)),
+  and 022 completes it. 023 begins the retire-v1 initiative (see
+  [doc/requirements/2026-09-20-retire-v1-local-trips.md](doc/requirements/2026-09-20-retire-v1-local-trips.md)),
+  which makes every trip server-backed from creation and removes the local-only trip mode by 031;
+  only 023 is authored so far.
 - One feature file = one unit of work; implement all its scenarios together, nothing beyond them.
 - Progress lives in `git log` (`feat(NNN)` prefixes), not a status file. Check before starting:
   `git log --oneline --grep="^feat(<NNN>)"`, and read `output/error/{feature}.md` if it exists.

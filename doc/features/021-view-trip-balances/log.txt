@@ -1,0 +1,461 @@
+=====================================================================
+Task 1: [Types] — lib/types.ts gains SharedExchangeRate, BalanceLine, TripBalancesResult
+Completed: 2026-09-19
+Commit: 91daff6
+
+Summary:
+  Appended SharedExchangeRate, BalanceLine, and TripBalancesResult to lib/types.ts after the
+  existing SharedExpense declaration. No existing type was modified. REFERENCE.md §4's lib/types.ts
+  tree entry now names the three new types under (021).
+
+Key Decisions:
+  The 021 types live in lib/types.ts rather than beside their consumers because TripBalancesResult
+  crosses the route-handler -> lib/balances.ts -> component API boundary, unlike the domain-local
+  result types in lib/currency.ts.
+
+Deviations:
+  None.
+
+Files Changed:
+  - lib/types.ts (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 2: [Config] — Prisma schema gains ExchangeRate
+Completed: 2026-09-19
+Commit: 9ce5058
+
+Summary:
+  Added the ExchangeRate model (tripId, currency, rate, createdAt, onDelete: Cascade, unique on
+  (tripId, currency)) plus the Trip.exchangeRates relation, and applied migration
+  20260919050519_add_exchange_rate creating the table, its two indexes and the cascade FK.
+  Verified with prisma migrate diff that the live database and schema.prisma are now byte-equivalent.
+
+Key Decisions:
+  Step 4 initially failed (exit 1) on a pre-existing stale checksum: migration
+  20260918160954_add_participant_id_snapshots was applied in feature 020, then had a backfill
+  appended afterwards, so the checksum recorded in _prisma_migrations no longer matched the file.
+  Feature 020's log deliberately deferred this (WATCH ITEM 1) as a user decision. The user chose the
+  non-destructive repair; the controller rewrote that single row's checksum to the SHA-256 of the
+  committed migration.sql (e1080a8835275e7b99ebe53e786fc8b37f55f6fb41b10460274d62128bd92eba; all four
+  other rows already matched, verified row by row), then re-ran `prisma migrate dev` to green. The
+  one-off repair script was deleted after use and is not part of the diff. This closes WATCH ITEM 1.
+  The controller ran the migration itself rather than re-dispatching an implementer, because the
+  blocker was environment-level bookkeeping, not the task's code; the schema edit itself came from
+  the implementer subagent and is byte-identical to the plan's contract.
+  Kept @@index([tripId]) even though @@unique([tripId, currency]) already covers tripId-only lookups:
+  it is what the plan's Task 2 contract prescribes, and dropping it would need a follow-up migration.
+  REFERENCE.md §4's mention of the PUT route is marked "(021, in progress)" because that route is
+  Task 5 of this same plan.
+
+Deviations:
+  None from the plan's schema/migration text. The Step 4 retry after the checksum repair is the only
+  operational deviation.
+
+Files Changed:
+  - prisma/schema.prisma (modified)
+  - prisma/migrations/20260919050519_add_exchange_rate/migration.sql (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx prisma generate  -> exit 0, "Generated Prisma Client (v7.10.0)"
+  npx prisma migrate dev --name add_exchange_rate -> exit 1 first (stale checksum), exit 0 after repair
+  npx prisma migrate status -> exit 0, "6 migrations found", "Database schema is up to date!"
+  npx prisma migrate diff (DB vs schema.prisma) -> "No difference detected."
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 3: [Domain] — lib/balances.ts
+Completed: 2026-09-19
+Commit: b35e869
+
+Summary:
+  Added lib/balances.ts: BalanceExpenseInput, getTripBalances (pure integer-cents netting, per-expense
+  currency conversion, last-share-absorbs-remainder, greedy largest-creditor/largest-debtor
+  reduction), TripBalancesFetchResult and fetchTripBalances (GET /api/trips/[id]/balances with the
+  x-creator-token / x-participant-token header, collapsed friendly error). REFERENCE.md §4 gained the
+  module's line.
+
+Key Decisions:
+  THE QUALITY GATE FAILED THE PLAN'S LITERAL CODE, so the committed implementation deviates from it
+  in three places. The plan's Task 3 Step 1 gives getTripBalances verbatim and says "exactness
+  matters", so each deviation is recorded here deliberately:
+  1. `originalTotalCents === 0` guard on the non-last share's division. Reachable through the app's
+     own validation: an amount of 0.004 passes `amount > 0`, calculateEvenSplit yields two zero-cent
+     shares whose cent-sum equals Math.round(0.004 * 100) === 0, and both expense routes accept
+     share.amount >= 0. The literal `0/0` produced NaN for BOTH shares, and because NaN is sticky and
+     fails the `cents > 0` / `cents < 0` filters, every net that participant appeared in later was
+     dropped — the whole trip silently reported settled up while isComplete stayed true.
+  2. The rate lookup now treats a stored rate that is non-finite or <= 0 as unusable, so such a
+     currency lands in missingCurrencies with isComplete false instead of converting at 0 or at
+     Infinity. Explicitly NOT reachable through this app's own writes (the Task 5 route validates
+     finite && > 0, and JSON cannot carry Infinity), so this is defence in depth; it also removes a
+     genuine non-termination case (Infinity net on both sides -> Math.min never advances a pointer ->
+     unbounded push). Rule mirrors lib/currency.ts:37-39 for per-device rates.
+  3. The matching loop advances on `!(cents > 0)` rather than `cents === 0` — behaviourally identical
+     for integer cents, but it guarantees progress on a non-finite value.
+  Everything else in the file is the plan's literal code. Both gates re-ran on the fixed revision and
+  PASSed; the re-run gate A judged all three amendments correct, and the re-run gate B independently
+  probed the 0.004 case, all four bad-rate cases, the happy paths (values unchanged), two-null-id
+  shares, payer-is-also-shareholder, the chain case, net-sum zero, line reconciliation and
+  determinism (25 runs, 1 distinct output).
+  Left unfixed and recorded as non-findings by both gates: an expense with an empty shares array
+  (unreachable — both writers reject shares.length === 0) and the `shares[].id` vs `participantId`
+  naming (spec-dictated).
+  REFERENCE.md's phrase "the minimum number of settlement lines" was flagged by both gates as
+  optimistic (greedy largest-first is not provably minimal for every net vector). Left as written
+  because it mirrors the spec's and the plan's own wording for this mandated algorithm; changing the
+  doc's claim about an algorithm the spec prescribes is a spec-level call, not a Task 3 fix.
+
+Deviations:
+  The three amendments above, all inside getTripBalances and all judged contract-preserving by both
+  gates. The plan's Task 3 Step 1 now carries a pointer note to this entry.
+
+Files Changed:
+  - lib/balances.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+  (gate B additionally executed the module under Node type-stripping in $env:TEMP and probed 20+
+   cases; no repo file was created by that probe)
+
+Review Gate — Spec:    PASS (attempt 2, after the fix)
+Review Gate — Quality: FAIL (attempt 1: NaN division + unusable-rate handling) -> PASS (attempt 2)
+=====================================================================
+=====================================================================
+Task 4: [Route] — GET /api/trips/[id]/balances
+Completed: 2026-09-19
+Commit: 2c84950
+
+Summary:
+  Added app/api/trips/[id]/balances/route.ts. It looks the trip up (404 "Trip not found."), runs the
+  participants-GET auth shape (x-creator-token matching the row, else an x-participant-token
+  belonging to that trip, else 403), then loads the trip's expenses with their shares and its
+  exchange rates, maps them through the snapshot columns into BalanceExpenseInput[], delegates to
+  lib/balances.ts's getTripBalances, and responds 200 { balances, tripCurrency }. REFERENCE.md §4
+  gained the route's line.
+
+Key Decisions:
+  `orderBy: { id: "asc" }` on the nested shares include is load-bearing rather than cosmetic:
+  getTripBalances gives the rounding remainder to the LAST share of the array it receives, so without
+  a stable ORDER BY the leftover cent could land on a different participant between two identical
+  requests. Both gates confirmed the order is a total order on the unique cuid.
+  Reads payerParticipantIdSnapshot / participantIdSnapshot rather than the live FKs, matching
+  app/api/trips/[id]/expenses/[expenseId]/route.ts's serialize helper, because a departed member's FK
+  is null while the snapshot survives. A creator's own share (snapshot null) maps to
+  BalanceExpenseInput's null id, which lib/balances.ts turns back into TRIP_CREATOR_ID — the same
+  identity the POST route writes on create.
+  The 200 body carries only { balances, tripCurrency }: neither creatorToken nor shareToken is ever
+  returned, and no raw Expense row is spread into the response.
+  The inline auth block is duplicated from the participants GET rather than extracted into a shared
+  helper — that is the deliberate pattern all seven existing app/api handlers follow (there is no
+  server-side auth helper in lib/participants.ts), so this task did not introduce the duplication.
+
+Deviations:
+  None. Two explanatory comments were added (the orderBy rationale and the snapshot-vs-FK rationale);
+  the plan gave both as prose in the task and the sibling handlers carry the same style.
+
+Files Changed:
+  - app/api/trips/[id]/balances/route.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build     -> exit 0, "Compiled successfully", route table includes /api/trips/[id]/balances
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 5: [Route] — PUT /api/trips/[id]/exchange-rates
+Completed: 2026-09-19
+Commit: 0da2973
+
+Summary:
+  Added app/api/trips/[id]/exchange-rates/route.ts. The body is parsed in its own try/catch into an
+  `unknown` (400 "Invalid exchange rate." on malformed JSON) before the main try begins, then the
+  handler awaits params, 404s on a missing trip, runs the participants-GET auth check, validates
+  currency (non-blank string after trim) and rate (finite, > 0) in that fixed order with an immediate
+  400 each, and upserts on the (tripId, currency) compound unique, responding 200 with an explicit
+  { id, tripId, currency, rate } projection. REFERENCE.md §4 gained the route's line and the
+  ExchangeRate schema line lost its now-stale "(021, in progress)" marker.
+
+Key Decisions:
+  No client component calls this endpoint in this feature, by explicit product decision recorded in
+  the plan and spec §2.1/§7: the route is real infrastructure (this feature's Playwright fixtures use
+  it) that avoids a second schema change when a later feature adds the entry screen. The task text
+  and the shipped comment make that explicit so a future reader does not treat it as dead code.
+  The compact single-line response projection avoids returning the raw Prisma row (which carries
+  createdAt) — consistent with the participants GET's explicit { id, name } mapping.
+  Gate B confirmed the parse try/catch sits genuinely outside the main try, so a malformed body can
+  never be reported as a server failure and vice versa; that the trimmed `currency` binding is used
+  by both the upsert's `where` and its `create`, so a create/where mismatch is impossible; that
+  `update: { rate }` never rewrites the compound key, so a repeat PUT updates instead of duplicating;
+  and that no unauthenticated caller can write (empty-string headers and cross-trip tokens were each
+  traced against the sibling handlers).
+
+Deviations:
+  One cosmetic point flagged by the implementer and confirmed by both gates: the plan's step-1 prose
+  says "parse in its own try/catch, separate from the handler's main try/catch" while the plan's code
+  block showed the parse inside the same try. The prose was followed, and it matches
+  app/api/trips/route.ts's existing pattern. No behavioral difference.
+
+Files Changed:
+  - app/api/trips/[id]/exchange-rates/route.ts (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build     -> exit 0, "Compiled successfully", route table includes /api/trips/[id]/exchange-rates
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+  (both gates re-ran all three; gate B additionally confirmed tripId_currency in the generated client
+   and traced the auth/upsert paths read-only — no DB-mutating command was run)
+
+Review Gate — Spec:    PASS (attempt 1)
+Review Gate — Quality: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 6: [UI] — components/TripBalances.tsx
+Completed: 2026-09-19
+Commit: 9d98574
+
+Summary:
+  Added components/TripBalances.tsx: a 'use client' read-only balances screen that mirrors
+  components/ManageParticipants.tsx's role-resolution effect (shared link first, then a joined trip,
+  else router.replace("/")), loads through lib/balances.ts's fetchTripBalances with the matching auth
+  header, and renders one of four states — the collapsed friendly-error role="alert", the incomplete
+  notice naming the missing currencies, "Everyone is settled up.", or the read-only settlement list.
+  REFERENCE.md §4 gained the component's line.
+
+Key Decisions:
+  The plan's literal settlement-row markup rendered the whole line as one sans text node. design.md
+  says every currency amount renders in font-mono, so the amount now sits in its own
+  <span className="font-mono"> with the names left sans. The separating space was kept as a real
+  character inside the first template literal rather than as a flex gap, because this feature's Task 10
+  spec asserts the row's textContent ("Alex owes Trip creator SGD 10.00") and a /\d+\.\d{2}$/ suffix —
+  the re-run gate proved mechanically (compiling the JSX and rendering it) that textContent is
+  unchanged: "Alex owes Trip creator ", then the span contributing "SGD 10.00". The plan's Task 6
+  markup now carries a pointer note to this entry.
+  The ready branch is wrapped in `balances !== null &&`. The plan's literal `balances.isComplete`
+  does not compile against `TripBalancesResult | null` state (TS18047), so a narrowing guard or early
+  return was unavoidable; the guard was chosen as the smaller change. Behavior is identical in every
+  reachable state, because "ready" is only ever set together with setBalances.
+  The incomplete notice is a bare role="status" with no warning color, matching the plan and the
+  precedent of components/Dashboard.tsx's bare "Remaining budget cannot be fully calculated yet."
+  note. The gate raised it as a consistency observation only and did not request a change.
+
+Deviations:
+  The font-mono span (above) and the `balances !== null &&` narrowing guard (above). Everything else,
+  including the copy, the branch order, the container/heading classes, the divide-y list and the
+  absence of interactive elements in a row, is the plan's literal contract.
+
+Files Changed:
+  - components/TripBalances.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+  (the combined gate re-ran both and additionally traced the render-null paths, the loadError and
+   tripCurrency states, and the <li> key uniqueness; no DB-mutating command was run)
+
+Review Gate — Combined: PASS (attempt 2, after the font-mono fix)
+=====================================================================
+=====================================================================
+Task 7: [Route] — app/trips/[token]/balances/page.tsx
+Completed: 2026-09-19
+Commit: f3cdbe0
+
+Summary:
+  Added app/trips/[token]/balances/page.tsx: a 'use client' route that unwraps { token } from
+  props.params via React's use() and renders components/TripBalances with it, keeping every state,
+  fetch and render branch in the component. REFERENCE.md §4 gained the route's line.
+
+Key Decisions:
+  The route deliberately does NOT read getTrip() and does NOT redirect at this level — it is the sixth
+  instance of the /join/[token] exception (a device can belong to a joined trip with no local solo
+  trip), and TripBalances itself already redirects home when the device belongs to neither role. The
+  layout's BottomNav and the trip gating therefore do not interact with this route at all.
+  No return-type annotation, no params interface — matching app/trips/[token]/participants/page.tsx
+  and app/trips/[token]/expenses/new/page.tsx exactly, and PageProps<...> is the globally generated
+  type rather than a hand-written one. The plan's snippet and the sibling routes agreed on everything
+  but line wrapping.
+  The TS2344 warning the plan recorded (PageProps failing to resolve until .next/types/routes.d.ts is
+  regenerated) did not occur: npm run build was run first, as the plan's note recommends, and the
+  subsequent tsc was clean.
+
+Deviations:
+  None.
+
+Files Changed:
+  - app/trips/[token]/balances/page.tsx (created)
+  - REFERENCE.md (modified)
+
+Verification:
+  npm run build     -> exit 0, "Compiled successfully", route table includes /trips/[token]/balances
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+  (the combined gate re-ran all three itself; no DB-mutating command was run)
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 8: [UI] — components/ShareTripLink.tsx gains a "View balances" link
+Completed: 2026-09-19
+Commit: d873f44
+
+Summary:
+  Added a "View balances" Link (className="link") to /trips/{shareToken}/balances immediately after
+  the existing "Manage participants" link in components/ShareTripLink.tsx's link-exists branch. The
+  link-less branch and the rest of the component are untouched. REFERENCE.md §4's line for the
+  component now records the link.
+
+Key Decisions:
+  The link exists only in the link-exists branch: before a share link is generated there is no
+  shareToken to build the href from, which is the same reason "Manage participants" is absent there.
+  No Playwright spec was added in this task. This is link wiring only; the routing behavior it points
+  at is covered by Task 10's e2e/021-view-trip-balances.spec.ts, and this task's job is to prove the
+  change did not break the two existing specs that exercise this component.
+  The gate swept e2e/016 and e2e/019 for link selectors that could now resolve to two elements or a
+  different index and found none (016 selects only the "Settings" link and the /join/ URL paragraph;
+  019 has no link selectors and reaches the participants route by page.goto).
+  The gate also caught a stale sentence of the controller's own making: the /trips/[token]/balances
+  route line in REFERENCE.md §4 still said both "View balances" entry links "land later in feature
+  021". It was corrected in this same commit's diff (creator link now described as present; the
+  participant one, which is Task 9, still future).
+
+Deviations:
+  One cosmetic addition beyond the plan's snippet: a blank line between the two <Link> elements,
+  matching the file's existing spacing between sibling elements. No rendering effect (the container
+  is flex flex-col gap-4).
+
+Files Changed:
+  - components/ShareTripLink.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+  npx playwright test e2e/016-generate-shareable-trip-link.spec.ts -> exit 0, 11 passed (14.1s)
+  npx playwright test e2e/019-manage-trip-participants.spec.ts     -> exit 0, 10 passed (19.5s)
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 9: [UI] — components/JoinedTripSummary.tsx gains a "View balances" link
+Completed: 2026-09-19
+Commit: ee609c8
+
+Summary:
+  Added a "View balances" Link (className="link self-start") to /trips/{shareToken}/balances
+  immediately after the existing "Add expense" link in components/JoinedTripSummary.tsx, giving a
+  joined participant their entry point into the balances screen. The rest of the file is untouched.
+  REFERENCE.md §4's line for the component now records the link.
+
+Key Decisions:
+  The link is additive and unconditional within the component's single render branch, so the two
+  screens that mount it (components/JoinTrip.tsx's joined branch and components/SharedTripView.tsx)
+  both gain the entry point without any further wiring.
+  No Playwright spec was added in this task — it is link wiring, and the routing behavior it points at
+  is covered by Task 10's spec. This task's job is to prove the four existing specs that exercise this
+  component still pass.
+  A FLAKE, recorded rather than hidden: the first run of e2e/020-attribute-an-expense-to-payer-and-split
+  failed once at line 773, waiting 5s for the "Edit split" button after a click on "Save split". The
+  test passed alone immediately after, the file passed 17/17 on retry, the controller's own independent
+  re-run got "17 passed (2.1m)", and the gate's combined run of all four files got "58 passed".
+  JoinedTripSummary is imported by exactly two modules, neither in the expense-detail route's tree, and
+  the 020 spec reaches that route by page.goto rather than by clicking through the summary, so an
+  additive link in it cannot influence that assertion. The gate independently reached the same
+  conclusion and could find no mechanism. Most likely cause is a PATCH round-trip under the spec's own
+  intercepted route combined with parallel-worker load; it is a pre-existing 020 spec timing flake,
+  not a defect of this change. WATCH ITEM for a future session: if it recurs, the 020 spec's 5s
+  toBeVisible after the save click is the thing to look at.
+  The gate caught a further stale sentence of the controller's own making: REFERENCE.md's
+  /trips/[token]/balances route line still said the participant's entry link "lands later in feature
+  021". It was corrected in this same commit's diff, since Task 10 is Playwright coverage only and
+  nothing later in this plan touches that line.
+
+Deviations:
+  None.
+
+Files Changed:
+  - components/JoinedTripSummary.tsx (modified)
+  - REFERENCE.md (modified)
+
+Verification:
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+  e2e/017-join-a-shared-trip-via-link.spec.ts                 -> 17 passed (16.6s)
+  e2e/018-switch-between-multiple-trips.spec.ts               -> 14 passed (16.5s)
+  e2e/019-manage-trip-participants.spec.ts                    -> 10 passed (19.9s)
+  e2e/020-attribute-an-expense-to-payer-and-split.spec.ts     -> 17 passed (2.1m) on the controller's
+    independent re-run, after one flaky failure in the implementer's first attempt (see Key Decisions)
+  all four files together (the gate's own run) -> 58 passed, 0 failed
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================
+=====================================================================
+Task 10: [Behavioral] — Playwright coverage for the full feature
+Completed: 2026-09-19
+Commit: 3e88429
+
+Summary:
+  Added e2e/021-view-trip-balances.spec.ts (506 lines, 10 tests) covering E2E-021-01 through
+  E2E-021-10. All state is built through the real API routes (POST /api/trips, POST /api/join,
+  POST /api/trips/[id]/expenses, PUT /api/trips/[id]/exchange-rates, DELETE
+  /api/trips/[id]/participants/[id]) rather than stubbed responses, mirroring the 020 spec's
+  helpers; localStorage is seeded with page.addInitScript before the first render, and every
+  role="alert"/role="status" assertion is scoped to the balances container.
+
+Key Decisions:
+  Three wait/guard helpers beyond the plan's helper list, all ADDITIVE and judged non-weakening by
+  the gate: `waitForBalancesScreen(page)`, `waitForSettlementLines(page, count)` and
+  `expectNoSettlementLines(page)`. components/TripBalances.tsx renders null until its role resolves
+  and the fetch settles, so a bare `toHaveCount(0)` on list items would pass vacuously against a
+  not-yet-rendered page; every zero-line scenario (E2E-021-04/05/06/08) now waits for the heading
+  first, and expectNoSettlementLines additionally asserts no <ul> exists — which is what the plan's
+  own E2E-021-08 parenthetical ("the <ul> never mounts in the error branch") describes.
+  E2E-021-01 identifies its two rows with filter({ hasText: ... }) rather than by index: the plan
+  fixes the row order but not the indices, and index-based lookups would silently follow a reorder.
+  test.describe.configure({ mode: "serial", timeout: 120_000 }) is copied from the 020 template,
+  with its rationale: playwright.config.ts sets fullyParallel, and 10 dev-mode route compiles racing
+  in parallel is exactly the flake class this file is meant to avoid.
+  The build was run for this task even though the change is test-only, because the plan's Step 3
+  names it; all three route lines it expects are present.
+  No REFERENCE.md update for this task: §4 describes e2e/ as one line without enumerating individual
+  spec files, so adding a spec changes neither the tree nor any documented API, dependency or storage
+  key — no row of the REFERENCE maintenance table applies.
+
+Deviations:
+  The three helpers, the filter-based rows and the serial-mode directive above. No assertion was
+  weakened: the gate checked every scenario's assertion against its AC line and found each one equal
+  to or stronger than specified (E2E-021-07 asserts exactly one line rather than merely "contains").
+
+Files Changed:
+  - e2e/021-view-trip-balances.spec.ts (created)
+
+Verification:
+  npx playwright test e2e/021-view-trip-balances.spec.ts -> exit 0, 10 passed (1.3m) — re-run by the
+    gate itself with the same result
+  npx tsc --noEmit  -> exit 0, no output
+  npm run lint      -> exit 0, no output beyond npm's two banner lines
+  npm run build     -> exit 0, "Compiled successfully"; route table includes /api/trips/[id]/balances,
+    /api/trips/[id]/exchange-rates and /trips/[token]/balances
+  controller final regression at HEAD (3e88429): tsc exit 0, lint exit 0, build exit 0
+
+Review Gate — Combined: PASS (attempt 1)
+=====================================================================

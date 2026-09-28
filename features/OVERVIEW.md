@@ -93,6 +93,12 @@ The app supports one active trip at a time. When a new trip is created, the prev
 - Local storage errors should show a user-friendly error message.
 - The app uses a minimal design style.
 - Mobile view should include bottom navigation.
+- Creating a trip via the server-backed setup flow (feature 23 onward) always adds a new trip to
+  the device's set of trips; it does not replace or remove any existing trip, unlike the legacy v1
+  solo-trip flow it is superseding.
+- A trip created via the server-backed setup flow (feature 23) has its creator role and share link
+  in place from the moment of creation — there is no "unshared" state for these trips to transition
+  out of.
 
 ---
 
@@ -143,3 +149,4 @@ Each feature's Gherkin scenarios live in its own file under `features/`:
 | 20 | Attribute an Expense to Payer and Split | [020.attribute-an-expense-to-payer-and-split.md](020.attribute-an-expense-to-payer-and-split.md) |
 | 21 | View Trip Balances | [021.view-trip-balances.md](021.view-trip-balances.md) |
 | 22 | Settle Up a Balance | [022.settle-up-a-balance.md](022.settle-up-a-balance.md) |
+| 23 | Create a Trip as a Shared Trip | [023.create-a-trip-as-a-shared-trip.md](023.create-a-trip-as-a-shared-trip.md) |
